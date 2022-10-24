@@ -1,5 +1,5 @@
-# dip
- Deep Image Pipeline
+#  Deep Imaging Pipeline
+
 
  This pipeline is a conversion of the GLEAM-X pipeline (https://github.com/tjgalvin/GLEAM-X-pipeline) into a Nextflow script with some minor modifications to suit deep imaging requirements.
 
@@ -11,11 +11,17 @@
  Execution: sbatch dip.sbatch
 
 
+
  Pipeline:
 
  Generate Calibration - Tested
+
  Apply Calibration - Tested
+
  Flag UV - Tested
+
  Image - Untested
+
  Post Image - Incomplete
+
 
