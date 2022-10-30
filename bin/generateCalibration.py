@@ -19,7 +19,7 @@ if len(sys.argv) != 3:
     exit(-1)
 
 projectdir = sys.argv[1]
-obsid = sys.argv[3]
+obsid = sys.argv[2]
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
