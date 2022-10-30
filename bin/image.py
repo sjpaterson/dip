@@ -7,18 +7,17 @@ import gleamx.calc_pointing as calcPointing
 from astropy.io import fits
 
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 3:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 projectdir = sys.argv[1]
-obsdir = sys.argv[2]
-obsid = sys.argv[3]
+obsid = sys.argv[2]
 
 # Define relavant file names and paths.
-obsdir = os.path.join(obsdir, obsid)
-metafits = os.path.join(obsdir, obsid + '.metafits')
-measurementSet = os.path.join(obsdir, obsid + '.ms')
+metafits = obsid + '.metafits'
+measurementSet = obsid + '.ms'
+
 
 
 #subchans="MFS 0000 0001 0002 0003"  # WSClean suffixes for subchannels and MFS
@@ -70,10 +69,10 @@ if 'shift' not in chgcentreResult.stderr.decode('utf-8'):
 
 
 
-if not os.path.exists(os.path.join(obsdir, obsid + '_template.fits')):
-    subprocess.run('wsclean -abs-mem 50 -mgain 1.0 -nmiter 1 -niter 0 -name ' + obsid + '_template -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -pol XX -data-column DATA -channel-range 4 5 -interval 4 5 -nwlayers 48 "' + measurementSet + '"', shell=True, check=True, cwd=obsdir)
-    subprocess.run('rm "' + os.path.join(obsdir, obsid + '_template-dirty.fits') + '"', shell=True)
-    subprocess.run('mv "' + os.path.join(obsdir, obsid + '_template-image.fits') + '" "' + os.path.join(obsdir, obsid + '_template.fits') + '"', shell=True)
+if not os.path.exists(obsid + '_template.fits'):
+    subprocess.run('wsclean -abs-mem 50 -mgain 1.0 -nmiter 1 -niter 0 -name ' + obsid + '_template -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -pol XX -data-column DATA -channel-range 4 5 -interval 4 5 -nwlayers 48 "' + measurementSet + '"', shell=True, check=True)
+    subprocess.run('rm "' + obsid + '_template-dirty.fits' + '"', shell=True)
+    subprocess.run('mv "' + obsid + '_template-image.fits' + '" "' + obsid + '_template.fits' + '"', shell=True)
 
 
 # Hardcoding John's PB script location for now
@@ -87,9 +86,11 @@ for n in range(0,4):
     cend = chans[j]
 
     # Check if the first pol exists for n, if so likely the others do aswell.
-    if not os.path.exists(os.path.join(obsdir, obsid + '_000' + str(n) + '-XX-beam.fits')):
-            subprocess.run('lookup_jones.py ' + obsid + ' _template.fits ' + obsid + '_000' + str(n) + '- -c ' + str(cstart) + '-' + str(cend) + ' --wsclean_names --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_jones.hdf5') + '"', shell=True, check=True, cwd=obsdir)
+    if not os.path.exists(obsid + '_000' + str(n) + '-XX-beam.fits'):
+            subprocess.run('lookup_jones.py ' + obsid + ' _template.fits ' + obsid + '_000' + str(n) + '- -c ' + str(cstart) + '-' + str(cend) + ' --wsclean_names --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_jones.hdf5') + '"', shell=True, check=True)
     for pol in pols:
-        subprocess.run('ln -s "' + os.path.join(obsdir, obsid + '_000' + str(n) + '-' + str(pol) + '-beam.fits') + '" "' + os.path.join(obsdir, obsid + '_deep-000' + str(n) + '-beam-' + str(pol) + '.fits') + '"', shell=True)  
+        subprocess.run('ln -s "' + obsid + '_000' + str(n) + '-' + str(pol) + '-beam.fits' + '" "' + obsid + '_deep-000' + str(n) + '-beam-' + str(pol) + '.fits' + '"', shell=True)  
 
-subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True, cwd=obsdir)
+subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
+
+

@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 
 process checkBeamData{
   output:
-    stdout
+    val 'completed'
   """
   #! /bin/bash -l
 
@@ -22,27 +22,30 @@ process checkBeamData{
 process generateCalibration {
   input:
     path obsid
+    val ready
   output:
     path obsid
 
     """
     export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
     export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
-    generateCalibration.py $projectDir $params.obsdir $obsid
+    cd $obsid
+    generateCalibration.py $projectDir $obsid
     """
 }
 
 process applyCalibration {
   input:
-    file obsid
+    path obsid
   output:
-    file obsid
+    path obsid
 
     """
     #! /bin/bash -l
     
-    measurementSet="$params.obsdir/${obsid}/${obsid}.ms"
-    calibrationFile="$params.obsdir/${obsid}/${obsid}_local_gleam_model_solutions_initial_ref.bin"
+    cd $obsid
+    measurementSet="${obsid}.ms"
+    calibrationFile="${obsid}_local_gleam_model_solutions_initial_ref.bin"
 
     if [[ ! -e "\${calibrationFile}" ]]
     then
@@ -56,52 +59,114 @@ process applyCalibration {
 
 process flagUV {
   input:
-    file obsid
+    path obsid
   output:
-    file obsid
+    path obsid
 
     """
-    ${projectDir}/bin/gleamx/ms_flag_by_uvdist.py "$params.obsdir/${obsid}/${obsid}.ms" DATA -a
+    cd $obsid
+    ${projectDir}/bin/gleamx/ms_flag_by_uvdist.py "${obsid}.ms" DATA -a
     """
 }
 
 process image {
   input:
-    file obsid
+    path obsid
   output:
-    file obsid
+    path obsid
 
     """
-    image.py $projectDir $params.obsdir $obsid
+    cd $obsid
+    image.py $projectDir $obsid
     """
 }
 
-process postImage {
+process postImage_0000 {
   input:
-    file obsid
+    path obsid
   output:
-    file obsid
+    path obsid
 
     """
-    postImage.py $projectDir $params.obsdir $obsid
+    cd $obsid
+    postImage.py $projectDir $obsid 0000
     """
 }
+
+process postImage_0001 {
+  input:
+    path obsid
+  output:
+    path obsid
+
+    """
+    cd $obsid
+    postImage.py $projectDir $obsid 0001
+    """
+}
+
+process postImage_0002 {
+  input:
+    path obsid
+  output:
+    path obsid
+
+    """
+    cd $obsid
+    postImage.py $projectDir $obsid 0002
+    """
+}
+
+process postImage_0003 {
+  input:
+    path obsid
+  output:
+    path obsid
+
+    """
+    cd $obsid
+    postImage.py $projectDir $obsid 0003
+    """
+}
+
+process postImage_MFS {
+  publishDir params.obsdir, mode: 'move', overwrite: true
+
+  input:
+    path obsid
+  output:
+    path obsid
+
+    """
+    cd $obsid
+    postImage.py $projectDir $obsid MFS
+    """
+}
+
 
 
 workflow {
   // Directory where the observations are stored.
   obsDirFull = params.obsdir + '/*'
   obsDirCh = Channel.fromPath(obsDirFull, type: 'dir')
+  //subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
 
-  // Check to see if the beam data for mwa_pb_lookup exists.
-  // If not download it.
+  // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
   checkBeamData()
-
-  // TO FIX: Ensure beam data is downloaded before continueing with the processing.
   
   // No observations requiring autoflag so have left it out, will revisit once the full list has been obtained.
-  // Process each observation in the directory.
+  // Process each observation in the specified observation directory.
 
-  generateCalibration(obsDirCh) | applyCalibration | flagUV | image | postImage
-  
+  generateCalibration(obsDirCh, checkBeamData.out)
+  applyCalibration(generateCalibration.out)
+  flagUV(applyCalibration.out)
+  image(flagUV.out)
+
+  // Likely a better method to achieve the below, will investigate later.
+  postImage_0000(image.out)
+  postImage_0001(postImage-0000.out)
+  postImage_0002(postImage-0001.out)
+  postImage_0003(postImage-0002.out)
+  postImage_MFS(postImage-0003.out)
+   
 }

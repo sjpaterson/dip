@@ -14,20 +14,18 @@ import gleamx.check_assign_solutions as checkSolutions
 from astropy.io import fits
 
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 3:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 projectdir = sys.argv[1]
-obsdir = sys.argv[2]
 obsid = sys.argv[3]
 
 # Define relavant file names and paths.
-obsdir = os.path.join(obsdir, obsid)
-metafits = os.path.join(obsdir, obsid + '.metafits')
+metafits = obsid + '.metafits'
 catGGSM = os.path.join(projectdir, 'models/GGSM.fits')
-catCropped = os.path.join(obsdir, obsid + '_cropped_catalogue.fits')
-calibrationModel = os.path.join(obsdir, obsid + '_local_gleam_model.txt')
+catCropped = obsid + '_cropped_catalogue.fits'
+calibrationModel = obsid + '_local_gleam_model.txt'
 
 # Set reference antenna.
 if int(obsid) > 1342950000:
@@ -75,7 +73,7 @@ def aocal_plot(solution, localRefant):
 
 # Check to see if the metafits file has been downloaded, if not, download it.
 # Would prefer to use the wget library, but must wait until new container is made.
-if not os.path.exists(os.path.join(obsdir, metafits)):
+if not os.path.exists(metafits):
     # wget.download('http://ws.mwatelescope.org/metadata/fits?obs_id=' + obsid, metafits)
     metaDownload = subprocess.run('wget -O "' + metafits + '" http://ws.mwatelescope.org/metadata/fits?obs_id=' + obsid, shell=True)
     # The above creates a 0b file if it fails, need to remove this before erroring out.
@@ -91,30 +89,30 @@ metadata = metaHdu[0].header
 metaHdu.close()
 
 # Crop the GGSM catalogue to the 250 brightest sources near the pointing location and bulld the calibration model from them.
-cc.run(ra=metadata['RA'], dec=metadata['DEC'], radius=30, top_bright=250, metafits=metafits, cat=catGGSM, fluxcol='S_200', plotFile=os.path.join(obsdir, obsid + '_local_gleam_model.png'), output=catCropped)
+cc.run(ra=metadata['RA'], dec=metadata['DEC'], radius=30, top_bright=250, metafits=metafits, cat=catGGSM, fluxcol='S_200', plotFile=obsid + '_local_gleam_model.png', output=catCropped)
 vo2m.run(catalogue=catCropped, point=True, output=calibrationModel, racol='RAJ2000', decol='DEJ2000', acol='a', bcol='b', pacol='pa', fluxcol='S_200', alphacol='alpha')
 
 
 # Check whether the phase centre has already changed
 # Calibration will fail if it has, so measurement set must be shifted back to its original position
-chgcentreResult = subprocess.run('chgcentre ' + os.path.join(obsdir, obsid + '.ms'), shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+chgcentreResult = subprocess.run('chgcentre ' + obsid + '.ms', shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 if 'shift' in chgcentreResult.stderr.decode('utf-8'):
     coords = optPointing.calc_peak_beam(metafits)
-    subprocess.run('chgcentre ' + os.path.join(obsdir, obsid + '.ms') + ' ' + coords, shell=True, check=True)
+    subprocess.run('chgcentre ' + obsid + '.ms ' + coords, shell=True, check=True)
 
 
 # Ionospheric triage.
 ts = 10  # Interval for ionospheric triage (in time steps).
-solution = os.path.join(obsdir, obsid + '_local_gleam_model_solutions_ts' + str(ts) + '.bin')
-calibrate(os.path.join(obsdir, obsid + '.ms'), solution, ts)
+solution = obsid + '_local_gleam_model_solutions_ts' + str(ts) + '.bin'
+calibrate(obsid + '.ms', solution, ts)
 aocal_plot(solution, refant)
-aocal_diff.run(solution, obsid, metafits=metafits, refant=refant, outdir=obsdir)
+aocal_diff.run(solution, obsid, metafits=metafits, refant=refant)
 
 
 # Assume the ionosphere is ok and derive a calibration solution.
-solution = os.path.join(obsdir, obsid + '_local_gleam_model_solutions_initial.bin')
-solutionRef = os.path.join(obsdir, obsid + '_local_gleam_model_solutions_initial_ref.bin')
-calibrate(os.path.join(obsdir, obsid + '.ms'), solution)
+solution = obsid + '_local_gleam_model_solutions_initial.bin'
+solutionRef = obsid + '_local_gleam_model_solutions_initial_ref.bin'
+calibrate(obsid + '.ms', solution)
 # Create a version divided through by the reference antenna, so that all observations have the same relative XY phase, allowing polarisation calibration solutions to be transferred.
 # This also sets the cross-terms to zero by default.
 aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=os.path.join(obsdir, obsid + '.ms'))
@@ -124,7 +122,7 @@ aocal_plot(solutionRef, refant)
 # Test to see if the calibration solution meets minimum quality control. This is a simple check based on the number of flagged solutions.
 if not checkSolutions.check_solutions(aofile=solutionRef):
     print('Solution Failed')
-    subprocess.run('mv "' + solutionRef + '" "' + os.path.join(obsdir, obsid + '_local_gleam_model_solutions_initial_ref_failed.bin') + '"', shell=True)
+    subprocess.run('mv "' + solutionRef + '" "' + obsid + '_local_gleam_model_solutions_initial_ref_failed.bin"', shell=True)
     exit(-1)
 
 
