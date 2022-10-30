@@ -164,9 +164,9 @@ workflow {
 
   // Likely a better method to achieve the below, will investigate later.
   postImage_0000(image.out)
-  postImage_0001(postImage-0000.out)
-  postImage_0002(postImage-0001.out)
-  postImage_0003(postImage-0002.out)
-  postImage_MFS(postImage-0003.out)
+  postImage_0001(postImage_0000.out)
+  postImage_0002(postImage_0001.out)
+  postImage_0003(postImage_0002.out)
+  postImage_MFS(postImage_0003.out)
    
 }
