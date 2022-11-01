@@ -115,6 +115,6 @@ workflow {
   applyCalibration(generateCalibration.out)
   flagUV(applyCalibration.out)
   image(flagUV.out)
-  postImage(image.out, subchan)
+  postImage(image.out, subChans)
    
 }
