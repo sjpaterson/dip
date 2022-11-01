@@ -70,6 +70,8 @@ process flagUV {
 }
 
 process image {
+  publishDir params.obsdir, mode: 'copy', overwrite: true
+
   input:
     path obsid
   output:
@@ -81,65 +83,18 @@ process image {
     """
 }
 
-process postImage_0000 {
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    cd $obsid
-    postImage.py $projectDir $obsid 0000
-    """
-}
-
-process postImage_0001 {
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    cd $obsid
-    postImage.py $projectDir $obsid 0001
-    """
-}
-
-process postImage_0002 {
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    cd $obsid
-    postImage.py $projectDir $obsid 0002
-    """
-}
-
-process postImage_0003 {
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    cd $obsid
-    postImage.py $projectDir $obsid 0003
-    """
-}
-
-process postImage_MFS {
-  publishDir params.obsdir, mode: 'move', overwrite: true
+process postImage {
+  publishDir params.obsdir, mode: 'copy', overwrite: true
 
   input:
     path obsid
+    each subchan
   output:
-    path obsid
+    path "${obsid}/*deep*"
 
     """
     cd $obsid
-    postImage.py $projectDir $obsid MFS
+    postImage.py $projectDir $obsid $subchan
     """
 }
 
@@ -149,24 +104,17 @@ workflow {
   // Directory where the observations are stored.
   obsDirFull = params.obsdir + '/*'
   obsDirCh = Channel.fromPath(obsDirFull, type: 'dir')
-  //subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
+  subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
 
   // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
   checkBeamData()
   
   // No observations requiring autoflag so have left it out, will revisit once the full list has been obtained.
   // Process each observation in the specified observation directory.
-
   generateCalibration(obsDirCh, checkBeamData.out)
   applyCalibration(generateCalibration.out)
   flagUV(applyCalibration.out)
   image(flagUV.out)
-
-  // Likely a better method to achieve the below, will investigate later.
-  postImage_0000(image.out)
-  postImage_0001(postImage_0000.out)
-  postImage_0002(postImage_0001.out)
-  postImage_0003(postImage_0002.out)
-  postImage_MFS(postImage_0003.out)
+  postImage(image.out, subchan)
    
 }
