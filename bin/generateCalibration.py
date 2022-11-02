@@ -26,6 +26,7 @@ metafits = obsid + '.metafits'
 catGGSM = os.path.join(projectdir, 'models/GGSM.fits')
 catCropped = obsid + '_cropped_catalogue.fits'
 calibrationModel = obsid + '_local_gleam_model.txt'
+measurementSet = obsid + '.ms'
 
 # Set reference antenna.
 if int(obsid) > 1342950000:
@@ -36,7 +37,7 @@ else:
     refant = 127
 
 # Calibration Shell
-def calibrate(measurementSet, solution, ts=None):
+def calibrate(localMeasurementSet, solution, ts=None):
     # Processing options.
     cores = 48  # Number of cores to use.
     mem   = 50  # Amount of memory to use.
@@ -52,7 +53,7 @@ def calibrate(measurementSet, solution, ts=None):
     arg4  = ' -minuv ' + str(minuvm)
     arg5  = ' -maxuv ' + str(maxuvm)
     arg6  = ' -applybeam -mwa-path "' + os.path.join(projectdir, 'beamdata') + '"'
-    arg7  = ' "' + measurementSet + '" "' + solution + '"'
+    arg7  = ' "' + localMeasurementSet + '" "' + solution + '"'
 
     if ts == None:
         calibrateCmd = 'calibrate ' + arg1 + arg2 + arg3 + arg4 + arg5 + arg6 + arg7
@@ -94,16 +95,16 @@ vo2m.run(catalogue=catCropped, point=True, output=calibrationModel, racol='RAJ20
 
 # Check whether the phase centre has already changed
 # Calibration will fail if it has, so measurement set must be shifted back to its original position
-chgcentreResult = subprocess.run('chgcentre ' + obsid + '.ms', shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+chgcentreResult = subprocess.run('chgcentre ' + measurementSet, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
 if 'shift' in chgcentreResult.stderr.decode('utf-8'):
     coords = optPointing.calc_peak_beam(metafits)
-    subprocess.run('chgcentre ' + obsid + '.ms ' + coords, shell=True, check=True)
+    subprocess.run('chgcentre ' + measurementSet + ' ' + coords, shell=True, check=True)
 
 
 # Ionospheric triage.
 ts = 10  # Interval for ionospheric triage (in time steps).
 solution = obsid + '_local_gleam_model_solutions_ts' + str(ts) + '.bin'
-calibrate(obsid + '.ms', solution, ts)
+calibrate(measurementSet, solution, ts)
 aocal_plot(solution, refant)
 aocal_diff.run(solution, obsid, metafits=metafits, refant=refant)
 
@@ -111,16 +112,16 @@ aocal_diff.run(solution, obsid, metafits=metafits, refant=refant)
 # Assume the ionosphere is ok and derive a calibration solution.
 solution = obsid + '_local_gleam_model_solutions_initial.bin'
 solutionRef = obsid + '_local_gleam_model_solutions_initial_ref.bin'
-calibrate(obsid + '.ms', solution)
+calibrate(measurementSet, solution)
 # Create a version divided through by the reference antenna, so that all observations have the same relative XY phase, allowing polarisation calibration solutions to be transferred.
 # This also sets the cross-terms to zero by default.
-aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=obsid + '.ms')
+aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=measurementSet)
 aocal_plot(solutionRef, refant)
 
 
 # Test to see if the calibration solution meets minimum quality control. This is a simple check based on the number of flagged solutions.
 if not checkSolutions.check_solutions(aofile=solutionRef):
-    print('Solution Failed')
+    print('Solution Failed') 
     subprocess.run('mv "' + solutionRef + '" "' + obsid + '_local_gleam_model_solutions_initial_ref_failed.bin"', shell=True)
     exit(-1)
 
