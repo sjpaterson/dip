@@ -152,7 +152,7 @@ def csv_out(obsid, median, peak, std, outdir):
            output_file.write(outformat.format(*outvars))
 
 
-def run(filename, obsid, metafits=None, refant=127, outdir=None, names=True, rms=False):
+def run(filename, obsid, metafits=None, refant=127, outdir='.', names=True, rms=False):
 
     
     if os.path.exists(filename):

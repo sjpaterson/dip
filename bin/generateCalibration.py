@@ -35,7 +35,6 @@ elif int(obsid) > 1300000000:
 else:
     refant = 127
 
-
 # Calibration Shell
 def calibrate(measurementSet, solution, ts=None):
     # Processing options.
@@ -115,7 +114,7 @@ solutionRef = obsid + '_local_gleam_model_solutions_initial_ref.bin'
 calibrate(obsid + '.ms', solution)
 # Create a version divided through by the reference antenna, so that all observations have the same relative XY phase, allowing polarisation calibration solutions to be transferred.
 # This also sets the cross-terms to zero by default.
-aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=os.path.join(obsdir, obsid + '.ms'))
+aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=obsid + '.ms')
 aocal_plot(solutionRef, refant)
 
 
@@ -124,7 +123,4 @@ if not checkSolutions.check_solutions(aofile=solutionRef):
     print('Solution Failed')
     subprocess.run('mv "' + solutionRef + '" "' + obsid + '_local_gleam_model_solutions_initial_ref_failed.bin"', shell=True)
     exit(-1)
-
-
-
 
