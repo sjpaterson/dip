@@ -96,7 +96,7 @@ vo2m.run(catalogue=catCropped, point=True, output=calibrationModel, racol='RAJ20
 # Check whether the phase centre has already changed
 # Calibration will fail if it has, so measurement set must be shifted back to its original position
 chgcentreResult = subprocess.run('chgcentre ' + measurementSet, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-if 'shift' in chgcentreResult.stderr.decode('utf-8'):
+if 'shift' in chgcentreResult.stdout.decode('utf-8'):
     coords = optPointing.calc_peak_beam(metafits)
     subprocess.run('chgcentre ' + measurementSet + ' ' + coords, shell=True, check=True)
 
