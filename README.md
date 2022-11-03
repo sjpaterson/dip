@@ -20,8 +20,8 @@
 
  Flag UV - Tested
 
- Image - Untested
+ Image - Tested
 
- Post Image - Incomplete
+ Post Image - Tested
 
 

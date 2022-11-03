@@ -72,6 +72,11 @@ process flagUV {
 process image {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
+  // Set SLURM job time limit to 2hr, increase it by 2hr each time it times out for a maximum of 3 retries.
+  time { 2.hour * task.attempt }
+  errorStrategy { task.exitStatus in 137 ? 'retry' : 'terminate' }
+  maxRetries 3
+
   input:
     path obsid
   output:
@@ -91,6 +96,7 @@ process postImage {
     each subchan
   output:
     path "${obsid}/*deep*"
+    path "${obsid}/*_xm*"
 
     """
     cd $obsid
