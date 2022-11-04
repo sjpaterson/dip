@@ -1,5 +1,6 @@
-#  Deep Imaging Pipeline
+#  Deep Imaging Pipeline - GLEAM-X
 
+ This branch is the version of the pipeline closest to the GLEAM-X pipeline. The outputs from this will closely match what will be obtained from GLEAM-X.
 
  This pipeline is a conversion of the GLEAM-X pipeline (https://github.com/tjgalvin/GLEAM-X-pipeline) into a Nextflow script with some minor modifications to suit deep imaging requirements.
 
