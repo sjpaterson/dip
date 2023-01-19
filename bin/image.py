@@ -2,25 +2,24 @@
 
 import os
 import sys
+import baselines
 import subprocess
 import gleamx.calc_pointing as calcPointing
 from astropy.io import fits
 
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 projectdir = sys.argv[1]
 obsid = sys.argv[2]
+robust = sys.argv[3]
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
 measurementSet = obsid + '.ms'
 
-
-
-#subchans="MFS 0000 0001 0002 0003"  # WSClean suffixes for subchannels and MFS
 minuv=75                            # Minimum uvw for self-calibration (in lambda)
 msigma=3                            # S/N Level at which to choose masked pixels for deepclean
 tsigma=1                            # S/N Threshold at which to stop cleaning
@@ -31,17 +30,14 @@ if int(obsid) > 1191580576:
     telescope="MWALB"
     basescale=0.6
     imsize=8000
-    robust=0.5
 elif int(obsid) > 1151402936:
     telescope="MWAHEX"
     basescale=2.0
     imsize=2000
-    robust=-2.0
 else:
     telescope="MWA128T"
     basescale=1.1
     imsize=4000
-    robust=-1.0
 
 # Import header information from the metafits file.
 metaHdu = fits.open(metafits)
@@ -91,6 +87,10 @@ for n in range(0,4):
     for pol in pols:
         subprocess.run('ln -s "' + obsid + '_000' + str(n) + '-' + str(pol) + '-beam.fits' + '" "' + obsid + '_deep-000' + str(n) + '-beam-' + str(pol) + '.fits' + '"', shell=True)  
 
-subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
+# Calculate the tukey parameters.
+min_uv, inner_width = baselines.calcTukey(obsid)
+
+tukey_cmd = ' -taper-inner-tukey ' + inner_width + ' -minuv-l ' + min_uv
+subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
 
 

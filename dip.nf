@@ -20,6 +20,9 @@ process checkBeamData{
 
 
 process generateCalibration {
+  errorStrategy { task.exitStatus in [143,137,104,134,139,9] ? 'retry' : 'terminate' }
+  maxRetries 3
+
   input:
     path obsid
     val ready
@@ -58,6 +61,9 @@ process applyCalibration {
 }
 
 process flagUV {
+  errorStrategy { task.exitStatus in [143,137,104,134,139,9] ? 'retry' : 'terminate' }
+  maxRetries 3
+
   input:
     path obsid
   output:
@@ -84,12 +90,15 @@ process image {
 
     """
     cd $obsid
-    image.py $projectDir $obsid
+    image.py $projectDir $obsid $params.briggs
     """
 }
 
 process postImage {
   publishDir params.obsdir, mode: 'copy', overwrite: true
+
+  errorStrategy { task.exitStatus in [143,137,104,134,139,9] ? 'retry' : 'terminate' }
+  maxRetries 3
 
   input:
     path obsid
