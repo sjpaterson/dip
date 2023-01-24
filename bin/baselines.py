@@ -43,9 +43,9 @@ def outer_tukey_taper(x, max_uv_m, outer_taper_m):
 def iterbaselines(antlist):
     return combinations(antlist, 2)
 
-def calcTukey(obsid, binSize=125, freq=215*10**6):
+def calcTukey(obsid, binSize=125, freq=214*10**6):
     metafits = obsid + '.metafits'
-    w = c/freq # meters
+    wavelength = c/freq # meters
 
     # Check to see if the metafits file has been downloaded, if not, download it.
     # Would prefer to use the wget library, but must wait until new container is made.
@@ -74,6 +74,9 @@ def calcTukey(obsid, binSize=125, freq=215*10**6):
         lengths.append(np.hypot(*(coords[:, i] - coords[:, j])))
     lengths = np.array(lengths)
 
+    # Convert from baseline (m) to number of wavelengths per baseline.
+    lengths = lengths / wavelength
+
     # Find the position of the peak.
     bins = np.arange(0, lengths.max(), binSize)
     plt.figure(figsize=(6, 4), dpi=240)
@@ -88,7 +91,8 @@ def calcTukey(obsid, binSize=125, freq=215*10**6):
     inner_tukey = inner_tukey_taper(x, min_uv, inner_width)
 
     ax.set_title('Tukey')
-    ax.set_xlabel('$\lambda$')
+    #ax.set_xlabel('$\lambda$')
+    ax.set_xlabel('Baseline / $\lambda$')
     ax.set_ylabel("Baseline Count")
     
     ax.plot(x, inner_tukey*n.max(), c='blue', label='Inner: ' + str(inner_width))
