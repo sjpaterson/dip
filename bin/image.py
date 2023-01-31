@@ -2,19 +2,19 @@
 
 import os
 import sys
-import baselines
 import subprocess
 import gleamx.calc_pointing as calcPointing
 from astropy.io import fits
 
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 5:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 projectdir = sys.argv[1]
 obsid = sys.argv[2]
 robust = sys.argv[3]
+tukey = sys.argv[4]
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
@@ -87,8 +87,9 @@ for n in range(0,4):
     for pol in pols:
         subprocess.run('ln -s "' + obsid + '_000' + str(n) + '-' + str(pol) + '-beam.fits' + '" "' + obsid + '_deep-000' + str(n) + '-beam-' + str(pol) + '.fits' + '"', shell=True)  
 
-# Calculate the tukey parameters.
-min_uv, inner_width = baselines.calcTukey(obsid)
+# Set the tukey parameters.
+min_uv = 0
+inner_width = tukey
 
 tukey_cmd = ' -taper-inner-tukey ' + inner_width + ' -minuv-l ' + min_uv
 subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)

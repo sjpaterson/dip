@@ -20,9 +20,6 @@ process checkBeamData{
 
 
 process generateCalibration {
-  errorStrategy { task.exitStatus in [143,137,104,134,139,9] ? 'retry' : 'terminate' }
-  maxRetries 3
-
   input:
     path obsid
     val ready
@@ -61,9 +58,6 @@ process applyCalibration {
 }
 
 process flagUV {
-  errorStrategy { task.exitStatus in [143,137,104,134,139,9] ? 'retry' : 'terminate' }
-  maxRetries 3
-
   input:
     path obsid
   output:
@@ -80,7 +74,7 @@ process image {
 
   // Set SLURM job time limit to 2hr, increase it by 2hr each time it times out for a maximum of 3 retries.
   time { 2.hour * task.attempt }
-  errorStrategy { task.exitStatus in 137 ? 'retry' : 'terminate' }
+  errorStrategy 'retry'
   maxRetries 3
 
   input:
@@ -90,15 +84,12 @@ process image {
 
     """
     cd $obsid
-    image.py $projectDir $obsid $params.briggs
+    image.py $projectDir $obsid $params.briggs $params.tukey
     """
 }
 
 process postImage {
   publishDir params.obsdir, mode: 'copy', overwrite: true
-
-  errorStrategy { task.exitStatus in [143,137,104,134,139,9] ? 'retry' : 'terminate' }
-  maxRetries 3
 
   input:
     path obsid
