@@ -3,6 +3,7 @@
 import os
 import sys
 #import wget
+import report
 import subprocess
 import gleamx.crop_catalogue as cc
 import gleamx.vo2model as vo2m
@@ -14,12 +15,13 @@ import gleamx.check_assign_solutions as checkSolutions
 from astropy.io import fits
 
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 projectdir = sys.argv[1]
 obsid = sys.argv[2]
+reportCsv = sys.argv[3]
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
@@ -79,6 +81,7 @@ if not os.path.exists(metafits):
     # The above creates a 0b file if it fails, need to remove this before erroring out.
     if metaDownload.returncode != 0:
         subprocess.run('rm "' + metafits + '"', shell=True)
+        report.updateObs(reportCsv, obsid, 'generateCalibration', 'Fail - Unable to download metadata.')
         exit(-1)
 
 
@@ -123,5 +126,7 @@ aocal_plot(solutionRef, refant)
 if not checkSolutions.check_solutions(aofile=solutionRef):
     print('Solution Failed') 
     subprocess.run('mv "' + solutionRef + '" "' + obsid + '_local_gleam_model_solutions_initial_ref_failed.bin"', shell=True)
+    report.updateObs(reportCsv, obsid, 'generateCalibration', 'Fail - Solution does not meet min quality.')
     exit(-1)
 
+report.updateObs(reportCsv, obsid, 'generateCalibration', 'Success')

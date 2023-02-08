@@ -30,7 +30,7 @@ process generateCalibration {
     export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
     export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
     cd $obsid
-    generateCalibration.py $projectDir $obsid
+    generateCalibration.py $projectDir $obsid $params.reportCsv
     """
 }
 
@@ -54,6 +54,7 @@ process applyCalibration {
     fi
 
     applysolutions -nocopy "\${measurementSet}" "\${calibrationFile}"
+    updateReport.py "$params.reportCsv" ${obsid} applyCalibration Success
     """
 }
 
@@ -66,6 +67,7 @@ process flagUV {
     """
     cd $obsid
     ${projectDir}/bin/gleamx/ms_flag_by_uvdist.py "${obsid}.ms" DATA -a
+    updateReport.py "$params.reportCsv" ${obsid} flagUV Success
     """
 }
 
@@ -84,12 +86,14 @@ process image {
 
     """
     cd $obsid
-    image.py $projectDir $obsid $params.briggs $params.tukey
+    image.py $projectDir $obsid $params.briggs $params.tukey $params.reportCsv
     """
 }
 
 process postImage {
   publishDir params.obsdir, mode: 'copy', overwrite: true
+
+  time 2.hour
 
   input:
     path obsid
@@ -100,7 +104,7 @@ process postImage {
 
     """
     cd $obsid
-    postImage.py $projectDir $obsid $subchan
+    postImage.py $projectDir $obsid $subchan $params.reportCsv
     """
 }
 

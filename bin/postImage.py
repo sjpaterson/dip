@@ -2,6 +2,8 @@
 
 import os
 import sys
+import rms
+import report
 import subprocess
 import astropy.units as u
 import gleamx.mask_image as mask_image
@@ -11,13 +13,15 @@ from astropy.coordinates import SkyCoord
 
 
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 5:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 projectdir = sys.argv[1]
 obsid = sys.argv[2]
 subchan = sys.argv[3]
+reportCsv = sys.argv[4]
+
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
@@ -98,8 +102,10 @@ cat = catHdu[1].data
 nsrc = len(cat)
 catHdu.close()
 
+report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, 'Initial - ' + str(nsrc))
 if nsrc < minsrcs:
     print('ERROR: Not enough sources detected.')
+    report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Fail - Not enough sources detected.')
     exit(-1)
 
 radius = 50
@@ -115,8 +121,11 @@ if not os.path.exists(pb_warp):
 if not os.path.exists(obsid + '_' + subchan + '_xm.fits'):
     subprocess.run('match_catalogues "' + obsid + '_deep-' + subchan + '-image-pb_comp_warp-corrected.fits" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsid + '_' + subchan + '_xm.fits" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
 
+# Changed to 2-D linear radial basis function interpolation and removed the bscale update.
 if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_warp_scaled_cf_output.txt'):
-    subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode mean --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --update-bscale --order 2 --ext png --nolatex', shell=True, check=True)
+    subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode rbf --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --order 2 --ext png --nolatex', shell=True, check=True)
+    #subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode rbf --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --update-bscale --order 2 --ext png --nolatex', shell=True, check=True)
+    #subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode mean --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --update-bscale --order 2 --ext png --nolatex', shell=True, check=True)
 
 # Get the header info from the flux warped image.
 warpHdu = fits.open(pb_warp)
@@ -141,3 +150,15 @@ if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_warp_weight.fits')
     subprocess.run('lookup_beam.py ' + obsid + ' _deep-' + subchan + '-image-pb_warp.fits ' + obsid + '_deep-' + subchan + '-image-pb_warp- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)
     gwm.genWeightMap(obsid + '_deep-' + subchan + '-image-pb_warp-XX-beam.fits', obsid + '_deep-' + subchan + '-image-pb_warp-YY-beam.fits', obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits', obsid + '_deep-' + subchan + '-image-pb_warp_weight.fits')
 
+# Update the source count in the report.
+catHdu = fits.open(obsid + '_deep-' + subchan + '-image-pb_warp_comp.fits')
+cat = catHdu[1].data
+nsrc = len(cat)
+catHdu.close()
+report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, str(nsrc))
+
+# Calculate the thermal RMS at the center of the observation.
+obsRms = rms.calcRMS(obsid + '_deep-' + subchan + '-image-pb_warp.fits')
+report.updateObs(reportCsv, obsid, 'rms_' + subchan, str(obsRms))
+
+report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Success')
