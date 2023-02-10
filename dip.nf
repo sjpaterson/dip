@@ -18,11 +18,21 @@ process checkBeamData{
   """
 }
 
+process startObsProcessing {
+  input:
+    path obsid
+    val ready
+  output:
+    path obsid
+
+    """
+    clearReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
+    """
+}
 
 process generateCalibration {
   input:
     path obsid
-    val ready
   output:
     path obsid
 
@@ -121,10 +131,10 @@ workflow {
   
   // No observations requiring autoflag so have left it out, will revisit once the full list has been obtained.
   // Process each observation in the specified observation directory.
-  generateCalibration(obsDirCh, checkBeamData.out)
+  startObsProcessing(obsDirCh, checkBeamData.out)
+  generateCalibration(startObsProcessing.out)
   applyCalibration(generateCalibration.out)
   flagUV(applyCalibration.out)
   image(flagUV.out)
   postImage(image.out, subChans)
-   
 }

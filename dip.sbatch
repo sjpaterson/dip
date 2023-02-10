@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=24:00:00
-#SBATCH --mem-per-cpu=6GB
+#SBATCH --mem-per-cpu=8GB
 
 module load nextflow
 
