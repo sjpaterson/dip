@@ -81,6 +81,20 @@ process flagUV {
     """
 }
 
+process uvSub {
+  input:
+    path obsid
+  output:
+    path obsid
+
+    """
+    export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
+    export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
+    cd $obsid
+    uvSub.py $projectDir $obsid $params.reportCsv
+    """
+}
+
 process image {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
@@ -135,6 +149,7 @@ workflow {
   generateCalibration(startObsProcessing.out)
   applyCalibration(generateCalibration.out)
   flagUV(applyCalibration.out)
-  image(flagUV.out)
+  uvSub(flagUV.out)
+  image(uvSub.out)
   postImage(image.out, subChans)
 }
