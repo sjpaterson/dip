@@ -82,6 +82,8 @@ process flagUV {
 }
 
 process uvSub {
+  time 2.hour
+  
   input:
     path obsid
   output:

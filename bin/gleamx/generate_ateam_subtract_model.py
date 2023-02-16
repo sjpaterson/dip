@@ -531,7 +531,7 @@ def ateam_model_creation(
                 print(f"Writing {no_comps} components to {model_output}")
                 out_file.write(model_text)
 
-    return None
+    return no_comps
 
 
 def attach_units_or_None(param, to_unit) -> Tuple["u", None]:

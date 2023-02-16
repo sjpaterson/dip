@@ -53,6 +53,7 @@ def startObs(reportFile, obsid, obsDir):
                 report.loc[obsid, 'generateCalibration'] = 'Queued'
                 report.loc[obsid, 'applyCalibration'] = 'Queued'
                 report.loc[obsid, 'flagUV'] = 'Queued'
+                report.loc[obsid, 'uvSub'] = 'Queued'
                 report.loc[obsid, 'image'] = 'Queued'
                 report.loc[obsid, 'postImage_0000'] = 'Queued'
                 report.loc[obsid, 'postImage_0001'] = 'Queued'

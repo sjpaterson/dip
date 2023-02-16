@@ -52,17 +52,22 @@ min_elevation = genUVSub.attach_units_or_None(min_elevation, u.degree)
 search_radius = genUVSub.attach_units_or_None(search_radius, u.degree)
 
 # Create a script for weclean to subtract a-team sources from the visibility dataset.
-result = genUVSub.ateam_model_creation(metafits, 'wsclean', ggsm=catGGSM, search_radius=search_radius, min_flux=5.0, check_fov=False, model_output=submodel, pixel_border=0, max_response=None, min_response=None, min_elevation=min_elevation, apply_beam=False, corrected_data=False, source_txt_path=None)
+numSources = genUVSub.ateam_model_creation(metafits, 'wsclean', ggsm=catGGSM, search_radius=search_radius, min_flux=5.0, check_fov=False, model_output=submodel, pixel_border=0, max_response=None, min_response=None, min_elevation=min_elevation, apply_beam=False, corrected_data=False, source_txt_path=None)
 
-if not os.path.exists(submodel):
-    report.updateObs(reportCsv, obsid, 'uvSub', 'Fail - Script not Generated.')
+print('Number of Sources: ' + str(numSources))
 
-# Run the generate UV sub wsclean script.
-subprocess.run('chmod +x ' + submodel, shell=True, check=True)
-subprocess.run('./' + submodel, shell=True, check=True)
+if (numSources > 0):
+    if not os.path.exists(submodel):
+        report.updateObs(reportCsv, obsid, 'uvSub', 'Fail - Script not Generated.')
+        exit(-1)
 
-# Cleanup, remove all the outlier*.fits files.
-for outlierFile in Path('.').glob('outlier*.fits'):
-    outlierFile.unlink()
+    # Run the generate UV sub wsclean script.
+    subprocess.run('chmod +x ' + submodel, shell=True, check=True)
+    subprocess.run('./' + submodel, shell=True, check=True)
+
+    # Cleanup, remove all the outlier*.fits files.
+    for outlierFile in Path('.').glob('outlier*.fits'):
+        outlierFile.unlink()
 
 report.updateObs(reportCsv, obsid, 'uvSub', 'Success')
+report.updateObs(reportCsv, obsid, 'uvSub_SourceCount', str(numSources))
