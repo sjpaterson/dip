@@ -8,7 +8,7 @@ process generateLists {
     path "weightlist"
 
     """
-    genMosaicLists.py "$params.reportCsv"
+    genMosaicLists.py "$params.reportCsv" m
     """
 }
 
