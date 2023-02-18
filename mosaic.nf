@@ -8,7 +8,7 @@ process generateLists {
     path "weightlist"
 
     """
-    genMosaicLists.py "$params.reportCsv" 3
+    genMosaicLists.py "$params.reportCsv"
     """
 }
 
@@ -16,8 +16,11 @@ process generateLists {
 process mosaic {
   publishDir params.mosaicdir, mode: 'copy', overwrite: true
 
+  // Request a larger amount of storage on /nvmetmp.
+  clusterOptions = '--tmp=500g'
+
   // Set SLURM job time limit to 24hr.
-  // time 24.hour
+  time 24.hour
 
   input:
     path imagelist
@@ -29,7 +32,7 @@ process mosaic {
     path "*"
 
     """
-    swarp -c "$projectDir/swarp.config" @"$imagelist" > swarpcmd
+    swarp -c "$projectDir/swarp.config" @"$imagelist"
     """
 }
 
