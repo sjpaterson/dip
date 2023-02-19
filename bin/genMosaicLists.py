@@ -6,16 +6,14 @@ import pandas as pd
 
 sampleSize = 0
 
-if len(sys.argv) != 3 and len(sys.argv) != 4:
+if len(sys.argv) != 2 and len(sys.argv) != 3:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 reportCsv = sys.argv[1]
-# Output Style, 'm' to output the inputfile for the mosiac, 'c' to just print the filenames for the beam convolution.
-outputStyle = sys.argv[2]
 
-if len(sys.argv) == 4:
-    sampleSize = int(sys.argv[3])
+if len(sys.argv) == 3:
+    sampleSize = int(sys.argv[2])
 
 report = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
@@ -35,19 +33,23 @@ report = report[report['postImage_MFS'] == 'Success']
 if sampleSize > 0:
     report = report.sample(n=sampleSize)
 
-if outputStyle == 'm':
-    fileImage = open('imagelist', 'w')
-    fileWeight = open('weightlist', 'w')
+# The list of observations to convolve (obslist). A CSV (beaminfo.csv) containing the obs and the beaminfo for the Nextflow workflow.
+# The list of filenames to convolve to (imagelist), used by both racs-tools and swarp,
+# and the list of weight images (weightlist) used by swarp for the weighting.
+fileObs = open('obslist', 'w')
+fileImage = open('imagelist', 'w')
+fileWeight = open('weightlist', 'w')
+beamCsv = pd.DataFrame(columns=['obsid', 'obspath', 'bmaj', 'bmin', 'bpa'])
+beamCsv.set_index('obsid', inplace=True)
 
-    for obsid, row in report.iterrows():
-        fileImage.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits\n')
-        fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
+for obsid, row in report.iterrows():
+    fileObs.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits\n')
+    fileImage.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits\n')
+    fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
+    beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits'
 
-    fileImage.close()
-    fileWeight.close()
+fileImage.close()
+fileWeight.close()
+fileObs.close()
 
-if outputStyle == 'c':
-    fileObs = open('obslist', 'w')
-    for obsid, row in report.iterrows():
-        fileObs.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits\n')
-    fileObs.close()
+beamCsv.to_csv('beaminfo.csv', index=True)

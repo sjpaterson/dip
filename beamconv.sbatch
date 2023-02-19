@@ -10,4 +10,5 @@ module load nextflow
 export NXF_OPTS="-Xms500M -Xmx2G"
 export NXF_ANSI_LOG=false
 
-nextflow run /astro/mwasci/user/dip/beamconv.nf -with-report
+nextflow run /astro/mwasci/user/dip/getBeamSize.nf -with-report
+nextflow run /astro/mwasci/user/dip/convolveBeam.nf -with-report
