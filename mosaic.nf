@@ -2,15 +2,15 @@
 nextflow.enable.dsl=2
 
 
-process generateLists {
-  output:
-    path "imagelist"
-    path "weightlist"
+// process generateLists {
+//   output:
+//     path "imagelist"
+//     path "weightlist"
 
-    """
-    genMosaicLists.py "$params.reportCsv"
-    """
-}
+//     """
+//     genMosaicLists.py "$params.reportCsv"
+//     """
+// }
 
 
 process mosaic {
@@ -39,7 +39,9 @@ process mosaic {
 
 workflow {
   // Generate the image and weight lists and then mosaic them using SWARP.
-  generateLists()
-  mosaic(generateLists.out)
+  //generateLists()
+  imageListChannel = Channel.fromPath("$params.mosaicdir/data/imagelist")
+  weightListChannel = Channel.fromPath("$params.mosaicdir/data/weightlist")
+  mosaic(imageListChannel, weightListChannel)
 
 }

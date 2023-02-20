@@ -6,14 +6,15 @@ import pandas as pd
 
 sampleSize = 0
 
-if len(sys.argv) != 2 and len(sys.argv) != 3:
+if len(sys.argv) != 3 and len(sys.argv) != 4:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 reportCsv = sys.argv[1]
+mosaicObsDir = sys.argv[2]
 
-if len(sys.argv) == 3:
-    sampleSize = int(sys.argv[2])
+if len(sys.argv) == 4:
+    sampleSize = int(sys.argv[3])
 
 report = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
@@ -44,7 +45,7 @@ beamCsv.set_index('obsid', inplace=True)
 
 for obsid, row in report.iterrows():
     fileObs.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits\n')
-    fileImage.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits\n')
+    fileImage.write(mosaicObsDir + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits\n')
     fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
     beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits'
 

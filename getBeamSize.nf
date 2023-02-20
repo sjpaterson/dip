@@ -11,13 +11,15 @@ process getObsList {
     path "beaminfo.csv"
 
     """
-    genMosaicLists.py "$params.reportCsv" 3
+    mkdir $params.mosaicdir/data
+    mkdir $params.mosaicdir/observations
+    genMosaicLists.py "$params.reportCsv" "$params.mosaicdir/observations" 3
     """
 }
 
 // Calculate the common beam size with RACS-TOOLS.
 process getBeamSize {
-  label 'beamconv'
+  label 'racstools'
 
   input:
     path obslist
@@ -39,7 +41,7 @@ process getBeamSize {
 
 // Save to common beam size in beaminfo.csv.
 process saveBeamInfo {
-  publishDir params.mosaicdir, mode: 'copy', overwrite: true
+  publishDir "$params.mosaicdir/data", mode: 'copy', overwrite: true
 
   input:
     path imagelist
