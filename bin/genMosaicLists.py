@@ -6,15 +6,17 @@ import pandas as pd
 
 sampleSize = 0
 
-if len(sys.argv) != 3 and len(sys.argv) != 4:
+if len(sys.argv) != 4 and len(sys.argv) != 5:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 reportCsv = sys.argv[1]
 mosaicObsDir = sys.argv[2]
+# mode: beam for the files required for the beam convolution and swarp for the files required for the mosaic by swarp.
+mode = sys.argv[3]
 
-if len(sys.argv) == 4:
-    sampleSize = int(sys.argv[3])
+if len(sys.argv) == 5:
+    sampleSize = int(sys.argv[4])
 
 report = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
@@ -30,27 +32,39 @@ report = report[report['postImage_0002'] == 'Success']
 report = report[report['postImage_0003'] == 'Success']
 report = report[report['postImage_MFS'] == 'Success']
 
-# Sample size to use if specified.
-if sampleSize > 0:
-    report = report.sample(n=sampleSize)
+if mode == 'beam':
+    # Sample size to use if specified.
+    if sampleSize > 0:
+        report = report.sample(n=sampleSize)
 
-# The list of observations to convolve (obslist). A CSV (beaminfo.csv) containing the obs and the beaminfo for the Nextflow workflow.
-# The list of filenames to convolve to (imagelist), used by both racs-tools and swarp,
-# and the list of weight images (weightlist) used by swarp for the weighting.
-fileObs = open('obslist', 'w')
-fileImage = open('imagelist', 'w')
-fileWeight = open('weightlist', 'w')
-beamCsv = pd.DataFrame(columns=['obsid', 'obspath', 'bmaj', 'bmin', 'bpa'])
-beamCsv.set_index('obsid', inplace=True)
+    # The list of observations to convolve (obslist). A CSV (beaminfo.csv) containing the obs and the beaminfo for the Nextflow workflow.
 
-for obsid, row in report.iterrows():
-    fileObs.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits\n')
-    fileImage.write(mosaicObsDir + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits\n')
-    fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
-    beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits'
+    fileObs = open('obslist', 'w')
+    beamCsv = pd.DataFrame(columns=['obsid', 'obspath', 'bmaj', 'bmin', 'bpa'])
+    beamCsv.set_index('obsid', inplace=True)
 
-fileImage.close()
-fileWeight.close()
-fileObs.close()
+    for obsid, row in report.iterrows():
+        fileObs.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits\n')
+        beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits'
 
-beamCsv.to_csv('beaminfo.csv', index=True)
+    fileObs.close()
+    beamCsv.to_csv('beaminfo.csv', index=True)
+
+
+if mode == 'swarp':
+    # The list of filenames to convolve to (imagelist), used by both racs-tools and swarp,
+    # and the list of weight images (weightlist) used by swarp for the weighting.
+    # Only for observations that were successfully convoled.
+    fileImage = open('imagelist', 'w')
+    fileWeight = open('weightlist', 'w')
+
+    for obsid, row in report.iterrows():
+        obsFile = mosaicObsDir + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits'
+        if os.path.exists(obsFile):
+            fileImage.write(obsFile + '\n')
+            fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
+
+    fileImage.close()
+    fileWeight.close()
+
+

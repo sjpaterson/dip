@@ -13,7 +13,7 @@ from astropy.coordinates import SkyCoord
 
 
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 7:
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
@@ -21,7 +21,8 @@ projectdir = sys.argv[1]
 obsid = sys.argv[2]
 subchan = sys.argv[3]
 reportCsv = sys.argv[4]
-
+ra = float(sys.argv[5])
+dec = float(sys.argv[6])
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
@@ -160,5 +161,9 @@ report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, str(nsrc))
 # Calculate the thermal RMS at the center of the observation.
 obsRms = rms.calcRMS(obsid + '_deep-' + subchan + '-image-pb_warp.fits')
 report.updateObs(reportCsv, obsid, 'rms_' + subchan, str(obsRms))
+
+# Calculate the thermal RMS at the coords specified.
+obsCoordRms = rms.calcRMSCoords(obsid + '_deep-' + subchan + '-image-pb_warp.fits', ra, dec)
+report.updateObs(reportCsv, obsid, 'coord_rms_' + subchan, str(obsCoordRms))
 
 report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Success')

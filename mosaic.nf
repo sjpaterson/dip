@@ -1,17 +1,15 @@
 // Mosaic - Deep Image Pipeline
 nextflow.enable.dsl=2
 
+process generateLists {
+  output:
+    path "imagelist"
+    path "weightlist"
 
-// process generateLists {
-//   output:
-//     path "imagelist"
-//     path "weightlist"
-
-//     """
-//     genMosaicLists.py "$params.reportCsv"
-//     """
-// }
-
+    """
+    genMosaicLists.py "$params.reportCsv" "$params.mosaicdir/observations" swarp $params.mosaicSample
+    """
+}
 
 process mosaic {
   publishDir params.mosaicdir, mode: 'copy', overwrite: true
@@ -39,9 +37,7 @@ process mosaic {
 
 workflow {
   // Generate the image and weight lists and then mosaic them using SWARP.
-  //generateLists()
-  imageListChannel = Channel.fromPath("$params.mosaicdir/data/imagelist")
-  weightListChannel = Channel.fromPath("$params.mosaicdir/data/weightlist")
-  mosaic(imageListChannel, weightListChannel)
+  generateLists()
+  mosaic(generateLists.out)
 
 }

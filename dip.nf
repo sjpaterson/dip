@@ -130,7 +130,7 @@ process postImage {
 
     """
     cd $obsid
-    postImage.py $projectDir $obsid $subchan $params.reportCsv
+    postImage.py $projectDir $obsid $subchan $params.reportCsv $params.ra $params.dec
     """
 }
 

@@ -6,14 +6,12 @@ nextflow.enable.dsl=2
 process getObsList {
   output:
     path "obslist"
-    path "imagelist"
-    path "weightlist"
     path "beaminfo.csv"
 
     """
-    mkdir $params.mosaicdir/data
-    mkdir $params.mosaicdir/observations
-    genMosaicLists.py "$params.reportCsv" "$params.mosaicdir/observations" 3
+    mkdir -p $params.mosaicdir/data
+    mkdir -p $params.mosaicdir/observations
+    genMosaicLists.py "$params.reportCsv" "$params.mosaicdir/observations" beam $params.mosaicSample
     """
 }
 
@@ -23,13 +21,9 @@ process getBeamSize {
 
   input:
     path obslist
-    path imagelist
-    path weightlist
     path beaminfocsv
 
   output:
-    path imagelist
-    path weightlist
     path beaminfocsv
     path "beamlog"
     path "convlog"
@@ -44,15 +38,11 @@ process saveBeamInfo {
   publishDir "$params.mosaicdir/data", mode: 'copy', overwrite: true
 
   input:
-    path imagelist
-    path weightlist
     path beaminfocsv
     path beamlog
     path convlog
 
   output:
-    path imagelist
-    path weightlist
     path beaminfocsv
     path beamlog
     path convlog
