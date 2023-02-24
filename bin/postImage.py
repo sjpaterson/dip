@@ -159,11 +159,11 @@ catHdu.close()
 report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, str(nsrc))
 
 # Calculate the thermal RMS at the center of the observation.
-obsRms = rms.calcRMS(obsid + '_deep-' + subchan + '-image-pb_warp.fits')
+obsRms = rms.calcRMS(obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits')
 report.updateObs(reportCsv, obsid, 'rms_' + subchan, str(obsRms))
 
 # Calculate the thermal RMS at the coords specified.
-obsCoordRms = rms.calcRMSCoords(obsid + '_deep-' + subchan + '-image-pb_warp.fits', ra, dec)
+obsCoordRms = rms.calcRMSCoords(obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits', ra, dec)
 report.updateObs(reportCsv, obsid, 'coord_rms_' + subchan, str(obsCoordRms))
 
 report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Success')

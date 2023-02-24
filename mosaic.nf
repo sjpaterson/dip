@@ -12,7 +12,7 @@ process generateLists {
 }
 
 process mosaic {
-  publishDir params.mosaicdir, mode: 'copy', overwrite: true
+  // publishDir params.mosaicdir, mode: 'copy', overwrite: true
 
   // Request a larger amount of storage on /nvmetmp.
   clusterOptions = '--tmp=500g'
@@ -27,17 +27,40 @@ process mosaic {
   output:
     path imagelist
     path weightlist
-    path "*"
+    path "deep.fits"
+    path "deep.weight.fits"
+    path "swarp.xml"
 
     """
     swarp -c "$projectDir/swarp.config" @"$imagelist"
     """
 }
 
+process measureRMS {
+  publishDir params.mosaicdir, mode: 'copy', overwrite: true
+
+  input:
+    path imagelist
+    path weightlist
+    path deep
+    path deepweight
+    path swarpxml
+  output:
+    path imagelist
+    path weightlist
+    path deep
+    path deepweight
+    path swarpxml
+    path "*"
+
+    """
+    BANE --cores 48 --compress --noclobber $deep
+    """
+}
 
 workflow {
   // Generate the image and weight lists and then mosaic them using SWARP.
   generateLists()
   mosaic(generateLists.out)
-
+  measureRMS(mosaic.out)
 }
