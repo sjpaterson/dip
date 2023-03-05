@@ -10,4 +10,7 @@ module load nextflow
 export NXF_OPTS="-Xms500M -Xmx2G"
 export NXF_ANSI_LOG=false
 
-nextflow run /astro/mwasci/user/dip/mosaic.nf -with-report
+nextflow run getBeamSize.nf -with-report
+nextflow run convolveBeam.nf -with-report
+nextflow run mosaic.nf -with-report
+

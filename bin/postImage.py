@@ -3,6 +3,7 @@
 import os
 import sys
 import rms
+import beam
 import report
 import subprocess
 import astropy.units as u
@@ -125,9 +126,7 @@ if not os.path.exists(obsid + '_' + subchan + '_xm.fits'):
 # Changed to 2-D linear radial basis function interpolation and removed the bscale update.
 if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_warp_scaled_cf_output.txt'):
     subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode rbf --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --order 2 --ext png --nolatex', shell=True, check=True)
-    #subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode rbf --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --update-bscale --order 2 --ext png --nolatex', shell=True, check=True)
-    #subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode mean --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --update-bscale --order 2 --ext png --nolatex', shell=True, check=True)
-
+    
 # Get the header info from the flux warped image.
 warpHdu = fits.open(pb_warp)
 warpHead = warpHdu[0].header
@@ -167,3 +166,6 @@ obsCoordRms = rms.calcRMSCoords(obsid + '_deep-' + subchan + '-image-pb_warp_rms
 report.updateObs(reportCsv, obsid, 'coord_rms_' + subchan, str(obsCoordRms))
 
 report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Success')
+
+if subchan == 'MFS':
+    report.updateObs(reportCsv, obsid, 'beamsize', beam.calcBeamSize(obsid + '_deep-' + subchan + '-image-pb_warp.fits'))

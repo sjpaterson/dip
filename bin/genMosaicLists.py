@@ -18,7 +18,7 @@ mode = sys.argv[3]
 if len(sys.argv) == 5:
     sampleSize = int(sys.argv[4])
 
-report = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
+report = pd.read_csv(reportCsv, index_col='obsid')
 
 # Filter the report to remove any bad observations.
 report = report[report['generateCalibration'] == 'Success']
@@ -31,6 +31,8 @@ report = report[report['postImage_0001'] == 'Success']
 report = report[report['postImage_0002'] == 'Success']
 report = report[report['postImage_0003'] == 'Success']
 report = report[report['postImage_MFS'] == 'Success']
+report = report[report['coord_rms_MFS'] < 0.02]
+report = report[report['dist_point_cent'] < 10]
 
 if mode == 'beam':
     # Sample size to use if specified.
@@ -52,9 +54,9 @@ if mode == 'beam':
 
 
 if mode == 'swarp':
-    # The list of filenames to convolve to (imagelist), used by both racs-tools and swarp,
+    # The list of filenames to convolve (imagelist), used by both racs-tools and swarp,
     # and the list of weight images (weightlist) used by swarp for the weighting.
-    # Only for observations that were successfully convoled.
+    # Only use observations that were successfully convoled.
     fileImage = open('imagelist', 'w')
     fileWeight = open('weightlist', 'w')
 

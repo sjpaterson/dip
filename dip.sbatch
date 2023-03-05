@@ -10,4 +10,4 @@ module load nextflow
 export NXF_OPTS="-Xms500M -Xmx2G"
 export NXF_ANSI_LOG=false
 
-nextflow run /astro/mwasci/user/dip/dip.nf -with-report
+nextflow run dip.nf -with-report

@@ -60,6 +60,7 @@ def startObs(reportFile, obsid, obsDir):
                 report.loc[obsid, 'postImage_0002'] = 'Queued'
                 report.loc[obsid, 'postImage_0003'] = 'Queued'
                 report.loc[obsid, 'postImage_MFS'] = 'Queued'
+                report.loc[obsid, 'beamsize'] = ''
                 report.loc[obsid, 'uvSub_SourceCount'] = ''
                 report.loc[obsid, 'sourcecount_0000'] = ''
                 report.loc[obsid, 'sourcecount_0001'] = ''

@@ -13,7 +13,6 @@ process checkBeamData{
         wget -P "$projectDir/beamdata" http://cerberus.mwa128t.org/mwa_full_embedded_element_pattern.h5
         wget -O pb_lookup.tar.gz https://cloudstor.aarnet.edu.au/plus/s/77FRhCpXFqiTq1H/download
         tar -xzvf pb_lookup.tar.gz -C "$projectDir/beamdata"
-        rm "$projectDir/pb_lookup.tar.gz"
   fi
   """
 }
