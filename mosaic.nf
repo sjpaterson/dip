@@ -37,8 +37,6 @@ process mosaic {
 }
 
 process measureRMS {
-  publishDir params.mosaicdir, mode: 'copy', overwrite: true
-
   input:
     path imagelist
     path weightlist
@@ -58,9 +56,34 @@ process measureRMS {
     """
 }
 
+process generateCatalogue {
+  publishDir params.mosaicdir, mode: 'copy', overwrite: true
+
+  input:
+    path imagelist
+    path weightlist
+    path deep
+    path deepweight
+    path swarpxml
+    path rms
+  output:
+    path imagelist
+    path weightlist
+    path deep
+    path deepweight
+    path swarpxml
+    path rms
+    path "*"
+
+    """
+    aegean --cores 1 --autoload --table="$deep" "$deep"
+    """
+}
+
 workflow {
   // Generate the image and weight lists and then mosaic them using SWARP.
   generateLists()
   mosaic(generateLists.out)
   measureRMS(mosaic.out)
+  generateCatalogue(measureRMS.out)
 }

@@ -2,10 +2,7 @@ from astropy.io import fits
 import numpy as np
 import sys
 
-old_method = False
-
 def genWeightMap(in_xx, in_yy, in_rms, out_weight):
-    # out_weight = in_xx.replace("-XX-beam.fits", "_weight.fits")
 
     hdu_xx = fits.open(in_xx)
     hdu_yy = fits.open(in_yy)
@@ -29,11 +26,7 @@ def genWeightMap(in_xx, in_yy, in_rms, out_weight):
         ]
     )
 
-    if not old_method:
-        weight = stokes_I ** 2 / cen_rms ** 2
-    else:
-        weight = 1.0 / (cen_rms) ** 2
-
-    hdu_xx[0].data = weight * stokes_I
+    weight = stokes_I ** 2 / cen_rms ** 2
+    hdu_xx[0].data = weight
     hdu_xx.writeto(out_weight)
 
