@@ -17,6 +17,9 @@ process checkBeamData{
   """
 }
 
+// A secondart check to ensure the directory is a synbolic link (observation has not processed).
+// If it isn't then it has been processed, then exit with error.
+// Else ocntinue and clear the report entry.
 process startObsProcessing {
   input:
     path obsid
@@ -25,7 +28,7 @@ process startObsProcessing {
     path obsid
 
     """
-    clearReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
+    obsStartCheckReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
     """
 }
 
@@ -137,8 +140,9 @@ process postImage {
 
 workflow {
   // Directory where the observations are stored.
+  // Only process the symbolic links.
   obsDirFull = params.obsdir + '/*'
-  obsDirCh = Channel.fromPath(obsDirFull, type: 'dir')
+  obsDirCh = Channel.fromPath(obsDirFull, type: 'dir').filter{java.nio.file.Files.isSymbolicLink(it)}
   subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
 
   // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
