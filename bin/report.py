@@ -50,6 +50,7 @@ def startObs(reportFile, obsid, obsDir):
                 # Open and update the report.
                 report = pd.read_csv(reportFile, dtype=str, index_col='obsid')
                 report.index = report.index.map(str)
+                report.loc[obsid, 'status'] = 'Queued'
                 report.loc[obsid, 'generateCalibration'] = 'Queued'
                 report.loc[obsid, 'applyCalibration'] = 'Queued'
                 report.loc[obsid, 'flagUV'] = 'Queued'
@@ -78,6 +79,10 @@ def startObs(reportFile, obsid, obsDir):
                 report.loc[obsid, 'rms_0003'] = ''
                 report.loc[obsid, 'rms_MFS'] = ''
                 report.loc[obsid, 'obsDir'] = obsDir
+
+                if pd.isna(report.loc[obsid, 'attempts']) or report.loc[obsid, 'attempts'] == '':
+                    report.loc[obsid, 'attempts'] = 0
+                report.loc[obsid, 'attempts'] = int(report.loc[obsid, 'attempts']) + 1
                 report.to_csv(reportFile)
                 reportUpdated = True
                 break
@@ -85,4 +90,5 @@ def startObs(reportFile, obsid, obsDir):
             time.sleep(5) 
 
     if (reportUpdated == False):
-        print('Report Update Unsuccessful.')    
+        print('Report Update Unsuccessful.')
+

@@ -108,6 +108,7 @@ report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, 'Initial - ' + str(
 if nsrc < minsrcs:
     print('ERROR: Not enough sources detected.')
     report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Fail - Not enough sources detected.')
+    report.updateObs(reportCsv, obsid, 'status', 'Failed')
     exit(-1)
 
 radius = 50

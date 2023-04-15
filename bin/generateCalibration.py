@@ -127,6 +127,7 @@ if not checkSolutions.check_solutions(aofile=solutionRef):
     print('Solution Failed') 
     subprocess.run('mv "' + solutionRef + '" "' + obsid + '_local_gleam_model_solutions_initial_ref_failed.bin"', shell=True)
     report.updateObs(reportCsv, obsid, 'generateCalibration', 'Fail - Solution does not meet min quality.')
+    report.updateObs(reportCsv, obsid, 'status', 'Failed')
     exit(-1)
 
 report.updateObs(reportCsv, obsid, 'generateCalibration', 'Success')

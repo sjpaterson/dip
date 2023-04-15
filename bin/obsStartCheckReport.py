@@ -13,6 +13,7 @@ reportCsv = sys.argv[1]
 obsid = sys.argv[2]
 obsDir = sys.argv[3]
 
+
 # Check to ensure the obsid has not already been processed.
 # IF it has not been processed, it will be a symoblic link.
 if not os.path.islink(os.path.join(obsDir, obsid)):
@@ -21,3 +22,4 @@ if not os.path.islink(os.path.join(obsDir, obsid)):
 
 # Hasn't been processed, clear the entry in the report for the obsid.
 report.startObs(reportCsv, obsid, obsDir)
+
