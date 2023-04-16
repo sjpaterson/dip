@@ -103,7 +103,7 @@ process image {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
   // Set SLURM job time limit to 4hr, increase it by 190 minutes each time it times out for a maximum of 3 retries.
-  time { 190.minutes * task.attempt }
+  time { 200.minutes * task.attempt }
   errorStrategy 'retry'
   maxRetries 3
 
