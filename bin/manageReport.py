@@ -8,16 +8,21 @@ import report
 
 
 asvoPath = '/astro/mwasci/asvo/'
+numberObs = 120
 
-if len(sys.argv) != 2 and len(sys.argv) != 3:
+if not (len(sys.argv) >= 2 and len(sys.argv) <= 4):
     print('ERROR: Incorrect number of parameters.')
     exit(-1)
 
 action = sys.argv[1]
 
 configFile = 'nextflow.config'
-if len(sys.argv) == 3:
-    configFile = sys.argv[2]
+if len(sys.argv) >= 3:
+    for i in range(2,len(sys.argv)):
+        if sys.argv[i].isnumeric():
+            numberObs = int(sys.argv[i])
+        else:
+            configFile = sys.argv[i]
 
 
 reportCsv = ''
@@ -75,7 +80,7 @@ if action == 'create':
         # IF attempt field is empty, treat it as 0.
         reportDF['attempts'] = reportDF['attempts'].fillna(0)
         # If < 3 attempts, create the new symlink.
-        if int(reportDF.at[obsid, 'attempts']) < 3 and count < 20:
+        if int(reportDF.at[obsid, 'attempts']) < 3 and count < numberObs:
             os.symlink(asvoObsPath, obsPath)
             report.updateObs(reportCsv, obsid, 'status', 'Initiated')
             count = count + 1

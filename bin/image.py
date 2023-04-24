@@ -83,10 +83,10 @@ for n in range(0,4):
     j = i + 5
     cend = chans[j]
 
-    # Check if the first pol exists for n, if so likely the others do aswell.
-    if not os.path.exists(obsid + '_000' + str(n) + '-XX-beam.fits'):
+    for pol in pols:        
+        # Check if the first pol exists, if not look it up.
+        if not os.path.exists(obsid + '_000' + str(n) + '-' + pol + '-beam.fits'):
             subprocess.run('lookup_jones.py ' + obsid + ' _template.fits ' + obsid + '_000' + str(n) + '- -c ' + str(cstart) + '-' + str(cend) + ' --wsclean_names --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_jones.hdf5') + '"', shell=True, check=True)
-    for pol in pols:
         subprocess.run('ln -s "' + obsid + '_000' + str(n) + '-' + str(pol) + '-beam.fits' + '" "' + obsid + '_deep-000' + str(n) + '-beam-' + str(pol) + '.fits' + '"', shell=True)  
 
 # Set the tukey parameters.
@@ -94,8 +94,6 @@ min_uv = '0'
 inner_width = str(tukey)
 
 tukey_cmd = ' -taper-inner-tukey ' + inner_width + ' -minuv-l ' + min_uv
-#subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
-subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol xx,yy,xy,yx -join-polarizations -join-channels -channels-out 4 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
-#subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol XX,YY,XY,YX,I -join-channels -channels-out 4 -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
+subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
 
 report.updateObs(reportCsv, obsid, 'image', 'Success')
