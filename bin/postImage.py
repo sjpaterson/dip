@@ -52,18 +52,12 @@ if (metadata['CENTCHAN'] == 69) and (b < 10):
 
 # Some file definitions for the channel.
 pb = obsid + '_deep-' + subchan + '-image-pb.fits'
-pbxx = obsid + '_deep-' + subchan + '-image-pb-XX-beam.fits'
-pbyy = obsid + '_deep-' + subchan + '-image-pb-YY-beam.fits'
+pbxx = obsid + '_deep-' + subchan + '-XX-beam.fits'
+pbyy = obsid + '_deep-' + subchan + '-YY-beam.fits'
 pbmask = obsid + '_deep-' + subchan + '-image-pb_mask.fits'
 pb_orig = obsid + '_deep-' + subchan + '-image-pb_original.fits'
 pb_warp = obsid + '_deep-' + subchan + '-image-pb_warp.fits'
 
-chanHdu = fits.open(pb)
-chanHead = chanHdu[0].header
-chanHdu.close()
-if chanHead['BMAJ'] == 0:
-    print('ERROR: Zero-Size PSF')
-    exit(-1)
 
 # Channel information for creating the weight maps.
 chans = metadata['CHANNELS'].split(',')
@@ -74,6 +68,24 @@ else:
     n = int(subchan)
     chanStart = n * 6
     chanEnd = chanStart + 5
+
+
+# Lookup the primary beam and apply to the linear polarizations.
+beam.applyPB(obsid, subchan, chans[chanStart], chans[chanEnd], os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5'))
+
+# Convert the linear polarizations to Stokes I.
+obsXXHdu = fits.open(obsid + '_deep-' + subchan + '-XX-image-pb.fits')
+obsYYHdu = fits.open(obsid + '_deep-' + subchan + '-YY-image-pb.fits')
+obsXXHdu[0].data = (obsXXHdu[0].data + obsYYHdu[0].data) / 2
+obsXXHdu.writeto(pb)
+
+chanHead = obsXXHdu[0].header
+if chanHead['BMAJ'] == 0:
+    print('ERROR: Zero-Size PSF')
+    exit(-1)
+
+obsXXHdu.close()
+obsYYHdu.close()
 
 # As the mask_image.py operation will destructively remove the pixels, create a backup or restore from backup when required.
 if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_comp.fits'):
@@ -87,8 +99,7 @@ if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_comp.fits'):
         else:
             subprocess.run('cp -v "' + pb_orig + '" "' + pb + '"', shell=True)
 
-    # Generate a weight map for mosaicking
-    subprocess.run('lookup_beam.py ' + obsid + ' _deep-' + subchan + '-image-pb.fits ' + obsid + '_deep-' + subchan + '-image-pb- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)
+
     mask_image.derive_apply_beam_cut(image=pb, xx_beam=pbxx, yy_beam=pbyy, apply_mask=True)
 
     # Move the new masked image into place.

@@ -102,8 +102,8 @@ process uvSub {
 process image {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
-  // Set SLURM job time limit to 200 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
-  time { 200.minutes * task.attempt }
+  // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
+  time { 150.minutes * task.attempt }
   errorStrategy 'retry'
   maxRetries 3
 
