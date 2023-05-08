@@ -21,18 +21,19 @@ if len(sys.argv) == 5:
 report = pd.read_csv(reportCsv, index_col='obsid')
 
 # Filter the report to remove any bad observations.
-report = report[report['generateCalibration'] == 'Success']
-report = report[report['applyCalibration'] == 'Success']
-report = report[report['flagUV'] == 'Success']
-report = report[report['uvSub'] == 'Success']
-report = report[report['image'] == 'Success']
-report = report[report['postImage_0000'] == 'Success']
-report = report[report['postImage_0001'] == 'Success']
-report = report[report['postImage_0002'] == 'Success']
-report = report[report['postImage_0003'] == 'Success']
-report = report[report['postImage_MFS'] == 'Success']
+# report = report[report['generateCalibration'] == 'Success']
+# report = report[report['applyCalibration'] == 'Success']
+# report = report[report['flagUV'] == 'Success']
+# report = report[report['uvSub'] == 'Success']
+# report = report[report['image'] == 'Success']
+# report = report[report['postImage_0000'] == 'Success']
+# report = report[report['postImage_0001'] == 'Success']
+# report = report[report['postImage_0002'] == 'Success']
+# report = report[report['postImage_0003'] == 'Success']
+# report = report[report['postImage_MFS'] == 'Success']
+report = report[report['status'] == 'Success']
 report = report[report['coord_rms_MFS'] < 0.02]
-report = report[report['dist_point_cent'] < 10]
+#report = report[report['dist_point_cent'] < 10]
 
 if mode == 'beam':
     # Sample size to use if specified.

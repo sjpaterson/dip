@@ -21,6 +21,11 @@ def updateObs(reportFile, obsid, action, val):
                 # Open and update the report.
                 report = pd.read_csv(reportFile, dtype=str, index_col='obsid')
                 report.index = report.index.map(str)
+
+                # Check to ensure the column exists, if not, create it.
+                if action not in report.columns:
+                    report['action'] = ''
+                    
                 report.loc[obsid, action] = val
                 report.to_csv(reportFile)
                 reportUpdated = True

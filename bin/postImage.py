@@ -4,14 +4,15 @@ import os
 import sys
 import rms
 import beam
+import shutil
 import report
+import catCalcs
 import subprocess
 import astropy.units as u
 import gleamx.mask_image as mask_image
 import gleamx.generate_weight_map as gwm
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
-
 
 
 if len(sys.argv) != 7:
@@ -25,9 +26,43 @@ reportCsv = sys.argv[4]
 ra = float(sys.argv[5])
 dec = float(sys.argv[6])
 
+
 # Define relavant file names and paths.
-metafits = obsid + '.metafits'
-measurementSet = obsid + '.ms'
+filePrefix = obsid + '_deep-' + subchan
+obsFiles = dict(
+    # Metafits file and measurement set.
+    metafits = obsid + '.metafits',
+    measurementSet = obsid + '.ms',
+    # Linear polarizations produced by WSCLEAN.
+    xx = filePrefix + '-XX-image.fits',
+    yy = filePrefix + '-YY-image.fits',
+    # Linear polarizations with primary beam applied.
+    xx_pb = filePrefix + '-XX-image-pb.fits',
+    yy_pb = filePrefix + '-YY-image-pb.fits',
+    # Stokes I conversion from linear polarizations with pb appleid.
+    ipb = filePrefix + '-image-pb.fits',
+    ipb_rms = filePrefix + '-image-pb_rms.fits',
+    ipb_bkg = filePrefix + '-image-pb_bkg.fits',
+    ipb_warp = filePrefix + '-image-pb_warp.fits',
+    ipb_warp_rms = filePrefix + '-image-pb_warp_rms.fits',
+    ipb_warp_bkg = filePrefix + '-image-pb_warp_bkg.fits',
+    # Primary beam information.
+    beam_xx = filePrefix + '-XX-beam.fits',
+    beam_yy = filePrefix + '-YY-beam.fits',
+    # Additional operations perfromed on Stokes I with PB applied.
+    ipb_mask = filePrefix + '-image-pb_mask.fits',
+    ipb_orig = filePrefix + '-image-pb_original.fits',
+    ipb_warp_weight = filePrefix + '-image-pb_warp_weight.fits',
+    xm = obsid + '_' + subchan + '_complete_sources_xm.fits',
+    xx_xm = obsid + '_' + subchan + '_complete_sources_xx_xm.fits',
+    yy_xm = obsid + '_' + subchan + '_complete_sources_yy_xm.fits',
+    # Source catalgoues.
+    ipb_cat_corrected = filePrefix + '-image-pb_comp_warp-corrected.fits',
+    xx_pb_cat = filePrefix + '-XX-image-pb_comp.fits',
+    yy_pb_cat = filePrefix + '-YY-image-pb_comp.fits',
+    ipb_cat = filePrefix + '-image-pb_comp.fits',
+    ipb_warp_cat = filePrefix + '-image-pb_warp_comp.fits',
+)
 
 
 # Sky model
@@ -35,29 +70,13 @@ POS_MODEL_CATALOGUE = os.path.join(projectdir, 'models/NVSS_SUMSS_psfcal.fits')
 FLUX_MODEL_CATALOGUE = os.path.join(projectdir, 'models/GGSM_sparse_unresolved.fits')
 
 separation = 60 / 3600      # Max separation for flux_warp crossmatch as ~ 1' -- unlikely that the ionosphere would be that brutal.
-exclusion = 180 / 3600      # Exclusion for flux_warp internal exclusive crossmatch as ~ 3'
-
+exclusion = 180 / 3600      # Exclusion for flux_warp internal exclusive crossmatch as ~ 3'.
+minsrcs = 500               # Minimum number of sources to accept for observation.
+radius = 50                 # Radius to match sources to.
 
 # Import header information from the metafits file.
-metaHdu = fits.open(metafits)
-metadata = metaHdu[0].header
-metaHdu.close()
-
-b = SkyCoord(metadata['RA']*u.deg, metadata['DEC']*u.deg).galactic.b.deg
-minsrcs = 500
-
-if (metadata['CENTCHAN'] == 69) and (b < 10):
-    minsrcs=50
-
-
-# Some file definitions for the channel.
-pb = obsid + '_deep-' + subchan + '-image-pb.fits'
-pbxx = obsid + '_deep-' + subchan + '-XX-beam.fits'
-pbyy = obsid + '_deep-' + subchan + '-YY-beam.fits'
-pbmask = obsid + '_deep-' + subchan + '-image-pb_mask.fits'
-pb_orig = obsid + '_deep-' + subchan + '-image-pb_original.fits'
-pb_warp = obsid + '_deep-' + subchan + '-image-pb_warp.fits'
-
+with fits.open(obsFiles['metafits']) as metaHdu:
+    metadata = metaHdu[0].header
 
 # Channel information for creating the weight maps.
 chans = metadata['CHANNELS'].split(',')
@@ -69,51 +88,72 @@ else:
     chanStart = n * 6
     chanEnd = chanStart + 5
 
+# Calculate the RMS for each polarization.
+rmsXX = rms.estimateRMS(obsFiles['xx'])
+rmsYY = rms.estimateRMS(obsFiles['yy'])
+report.updateObs(reportCsv, obsid, 'rms_xx_' + subchan, rmsXX)
+report.updateObs(reportCsv, obsid, 'rms_yy_' + subchan, rmsYY)
 
-# Lookup the primary beam and apply to the linear polarizations.
-beam.applyPB(obsid, subchan, chans[chanStart], chans[chanEnd], os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5'))
+# Load beam data.
+if not os.path.exists(obsFiles['beam_xx']) or not os.path.exists(obsFiles['beam_yy']):
+    subprocess.run('lookup_beam.py ' + obsid + ' _deep-' + subchan + '-XX-image.fits ' + obsid + '_deep-' + subchan + '- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)
+
+with fits.open(obsFiles['beam_xx']) as beamXXHdu:
+    beamXX = beamXXHdu[0].data
+
+with fits.open(obsFiles['beam_yy']) as beamYYHdu:
+    beamYY = beamYYHdu[0].data
+
+# Apply the primary beam to the linear polarizations.
+with fits.open(obsFiles['xx']) as obsHdu:
+    obsHdu[0].data = obsHdu[0].data / beamXX
+    obsHdu.writeto(obsFiles['xx_pb'])
+
+with fits.open(obsFiles['yy']) as obsHdu:
+    obsHdu[0].data = obsHdu[0].data / beamYY
+    obsHdu.writeto(obsFiles['yy_pb'])
+
+
+# # Find sources on each polization.
+subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['xx_pb'] + '" "' + obsFiles['xx_pb'] + '"', shell=True, check=True)
+subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['yy_pb'] + '" "' + obsFiles['yy_pb'] + '"', shell=True, check=True)
+subprocess.run('match_catalogues "' + obsFiles['xx_pb_cat'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['xx_xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
+subprocess.run('match_catalogues "' + obsFiles['yy_pb_cat'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['yy_xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
+
+# Calculate the difference of the 20 brightest sources compared to GLEAM to prdouce the scaling factor A.
+Axx = catCalcs.calcA(obsFiles['xx_xm'], 20, FLUX_MODEL_CATALOGUE, metadata['FREQCENT'])
+Ayy = catCalcs.calcA(obsFiles['yy_xm'], 20, FLUX_MODEL_CATALOGUE, metadata['FREQCENT'])
 
 # Convert the linear polarizations to Stokes I.
-obsXXHdu = fits.open(obsid + '_deep-' + subchan + '-XX-image-pb.fits')
-obsYYHdu = fits.open(obsid + '_deep-' + subchan + '-YY-image-pb.fits')
-obsXXHdu[0].data = (obsXXHdu[0].data + obsYYHdu[0].data) / 2
-obsXXHdu.writeto(pb)
+obsXXHdu = fits.open(obsFiles['xx'])
+obsYYHdu = fits.open(obsFiles['yy'])
 
-chanHead = obsXXHdu[0].header
-if chanHead['BMAJ'] == 0:
-    print('ERROR: Zero-Size PSF')
-    exit(-1)
+Nxx = obsXXHdu[0].data * Axx * beamXX / rmsXX**2
+Nyy = obsYYHdu[0].data * Ayy * beamYY / rmsYY**2
+Dxx = Axx**2 * beamXX**2 / rmsXX**2
+Dyy = Ayy**2 * beamYY**2 / rmsYY**2
+obsXXHdu[0].data =  (Nxx + Nyy) / (Dxx + Dyy)
+obsXXHdu.writeto(obsFiles['ipb'])
 
 obsXXHdu.close()
 obsYYHdu.close()
 
-# As the mask_image.py operation will destructively remove the pixels, create a backup or restore from backup when required.
-if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_comp.fits'):
-    
-    if not os.path.exists(pb_orig):
-        subprocess.run('cp -v "' + pb + '" "' + pb_orig + '"', shell=True)
-    if not os.path.exists(pb):
-        if not os.path.exists(pb_orig):
-            print('ERROR: Missing ' + pb + ' and ' + pb_orig + '.')
-            exit(-1)
-        else:
-            subprocess.run('cp -v "' + pb_orig + '" "' + pb + '"', shell=True)
+# Create a backup of the Stokes I as mask_image will destructively remove pixel then apply the mask to the original.
+shutil.copyfile(obsFiles['ipb'], obsFiles['ipb_orig'])
+mask_image.derive_apply_beam_cut(image=obsFiles['ipb'], xx_beam=obsFiles['beam_xx'], yy_beam=obsFiles['beam_yy'], apply_mask=True)
 
+# Move the new masked image into place.
+os.remove(obsFiles['ipb'])
+os.rename(obsFiles['ipb_mask'], obsFiles['ipb'])
 
-    mask_image.derive_apply_beam_cut(image=pb, xx_beam=pbxx, yy_beam=pbyy, apply_mask=True)
-
-    # Move the new masked image into place.
-    subprocess.run('rm "' + pb + '" && mv "' + pbmask + '" "' + pb + '"', shell=True)
-
-    subprocess.run('BANE --cores 48 --compress --noclobber "' + pb + '"', shell=True, check=True)
-    subprocess.run('aegean --cores 1 --autoload --table="' + pb + '" "' + pb + '"', shell=True, check=True)
-    
+# Calculate RMS and detect sources on the image.
+subprocess.run('BANE --cores 48 --compress --noclobber "' + obsFiles['ipb'] + '"', shell=True, check=True)
+subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['ipb'] + '" "' + obsFiles['ipb'] + '"', shell=True, check=True)
     
 # Check that a sufficient number of sources were detected.
-catHdu = fits.open(obsid + '_deep-' + subchan + '-image-pb_comp.fits')
-cat = catHdu[1].data
-nsrc = len(cat)
-catHdu.close()
+with fits.open(obsFiles['ipb_cat']) as catHdu:
+    cat = catHdu[1].data
+    nsrc = len(cat)
 
 report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, 'Initial - ' + str(nsrc))
 if nsrc < minsrcs:
@@ -122,62 +162,49 @@ if nsrc < minsrcs:
     report.updateObs(reportCsv, obsid, 'status', 'Failed')
     exit(-1)
 
-radius = 50
-freqq = str(int(round(chanHead['CRVAL3']/1e6)))
-
-if not os.path.exists(obsid + '_' + subchan + '_complete_sources_xm.fits'):
-    subprocess.run('fits_warp.py --incat "' + obsid + '_deep-' + subchan + '-image-pb_comp.fits" --refcat "' + POS_MODEL_CATALOGUE + '" --xm "' + obsid + '_' + subchan + '_complete_sources_xm.fits" --plot --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --infits "' + pb + '"', shell=True, check=True)
-
-if not os.path.exists(pb_warp):
-    subprocess.run('fits_warp.py --incat "' + obsid + '_deep-' + subchan + '-image-pb_comp.fits" --refcat "' + POS_MODEL_CATALOGUE + '" --corrected "' + obsid + '_deep-' + subchan + '-image-pb_comp_warp-corrected.fits" --xm "' + obsid + '_' + subchan + '_fits_warp_xm.fits" --suffix warp --infits "' + pb + '" --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --plot --nsrcs 750 --vm 10 --progress --cores 24 --signal peak_flux_1 --enforce-min-srcs 100', shell=True, check=True)
+subprocess.run('fits_warp.py --incat "' + obsFiles['ipb_cat'] + '" --refcat "' + POS_MODEL_CATALOGUE + '" --xm "' + obsFiles['xm'] + '" --plot --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --infits "' + obsFiles['ipb'] + '"', shell=True, check=True)
+subprocess.run('fits_warp.py --incat "' + obsFiles['ipb_cat'] + '" --refcat "' + POS_MODEL_CATALOGUE + '" --corrected "' + obsFiles['ipb_cat_corrected'] + '" --xm "' + obsFiles['xm'] + '" --suffix warp --infits "' + obsFiles['ipb'] + '" --ra1 ra --dec1 dec --ra2 RAJ2000 --dec2 DEJ2000 --plot --nsrcs 750 --vm 10 --progress --cores 24 --signal peak_flux_1 --enforce-min-srcs 100', shell=True, check=True)
 
 # Flux_warp dependency, match the image catalogue to the model table.
-if not os.path.exists(obsid + '_' + subchan + '_xm.fits'):
-    subprocess.run('match_catalogues "' + obsid + '_deep-' + subchan + '-image-pb_comp_warp-corrected.fits" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsid + '_' + subchan + '_xm.fits" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
+subprocess.run('match_catalogues "' + obsFiles['ipb_cat_corrected'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
 
 # Changed to 2-D linear radial basis function interpolation and removed the bscale update.
-if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_warp_scaled_cf_output.txt'):
-    subprocess.run('flux_warp "' + obsid + '_' + subchan + '_xm.fits" "' + obsid + '_deep-' + subchan + '-image-pb_warp.fits" --mode rbf --freq "' + freqq + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --order 2 --ext png --nolatex', shell=True, check=True)
+subprocess.run('flux_warp "' + obsFiles['xm'] + '" "' + obsFiles['ipb_warp'] + '" --mode rbf --freq "' + str(metadata['FREQCENT']) + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --order 2 --ext png --nolatex', shell=True, check=True)
     
 # Get the header info from the flux warped image.
-warpHdu = fits.open(pb_warp)
-warpHead = warpHdu[0].header
-warpHdu.close()
-factor = warpHead['BSCALE']
+with fits.open(obsFiles['ipb_warp']) as warpHdu:
+    warpHead = warpHdu[0].header
+    factor = warpHead['BSCALE']
 
 
 # The RMS and BKG maps will not have changed much from the ionospheric warping, therefore rename them and update BSCALE.
-subprocess.run('mv "' + obsid + '_deep-' + subchan + '-image-pb_rms.fits' + '" "' + obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits' + '"', shell=True)
-subprocess.run('mv "' + obsid + '_deep-' + subchan + '-image-pb_bkg.fits' + '" "' + obsid + '_deep-' + subchan + '-image-pb_warp_bkg.fits' + '"', shell=True)
-fits.setval(obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits', 'BSCALE', value=factor)
-fits.setval(obsid + '_deep-' + subchan + '-image-pb_warp_bkg.fits', 'BSCALE', value=factor)
+os.rename(obsFiles['ipb_rms'], obsFiles['ipb_warp_rms'])
+os.rename(obsFiles['ipb_bkg'], obsFiles['ipb_warp_bkg'])
+fits.setval(obsFiles['ipb_warp_rms'], 'BSCALE', value=factor)
+fits.setval(obsFiles['ipb_warp_bkg'], 'BSCALE', value=factor)
 
 
-# Rerun the source finding.
-if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_warp_comp.fits'):
-    subprocess.run('aegean --cores 1 --autoload --table="' + pb_warp + '" "' + pb_warp + '"', shell=True, check=True)
+# Rerun the source finding on the flux warped image.
+subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['ipb_warp'] + '" "' + obsFiles['ipb_warp'] + '"', shell=True, check=True)
 
 # Generate a weight map for mosaicking.
-if not os.path.exists(obsid + '_deep-' + subchan + '-image-pb_warp_weight.fits'):
-    subprocess.run('lookup_beam.py ' + obsid + ' _deep-' + subchan + '-image-pb_warp.fits ' + obsid + '_deep-' + subchan + '-image-pb_warp- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)
-    gwm.genWeightMap(obsid + '_deep-' + subchan + '-image-pb_warp-XX-beam.fits', obsid + '_deep-' + subchan + '-image-pb_warp-YY-beam.fits', obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits', obsid + '_deep-' + subchan + '-image-pb_warp_weight.fits')
+#subprocess.run('lookup_beam.py ' + obsFiles['ipb_warp'] + ' ' + filePrefix + '-image-pb_warp- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)
+#gwm.genWeightMap(obsid + '_deep-' + subchan + '-image-pb_warp-XX-beam.fits', obsid + '_deep-' + subchan + '-image-pb_warp-YY-beam.fits', obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits', obsid + '_deep-' + subchan + '-image-pb_warp_weight.fits')
+gwm.genWeightMap(obsFiles['beam_xx'], obsFiles['beam_yy'], obsFiles['ipb_warp_rms'], obsFiles['ipb_warp_weight'])
 
 # Update the source count in the report.
-catHdu = fits.open(obsid + '_deep-' + subchan + '-image-pb_warp_comp.fits')
-cat = catHdu[1].data
-nsrc = len(cat)
-catHdu.close()
+with fits.open(obsFiles['ipb_warp_cat']) as catHdu:
+    cat = catHdu[1].data
+    nsrc = len(cat)
 report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, str(nsrc))
 
 # Calculate the thermal RMS at the center of the observation.
-obsRms = rms.calcRMS(obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits')
+obsRms = rms.calcRMS(obsFiles['ipb_warp_rms'])
 report.updateObs(reportCsv, obsid, 'rms_' + subchan, str(obsRms))
 
 # Calculate the thermal RMS at the coords specified.
-obsCoordRms = rms.calcRMSCoords(obsid + '_deep-' + subchan + '-image-pb_warp_rms.fits', ra, dec)
+obsCoordRms = rms.calcRMSCoords(obsFiles['ipb_warp_rms'], ra, dec)
 report.updateObs(reportCsv, obsid, 'coord_rms_' + subchan, str(obsCoordRms))
-
 report.updateObs(reportCsv, obsid, 'postImage_' + subchan, 'Success')
-
 if subchan == 'MFS':
-    report.updateObs(reportCsv, obsid, 'beamsize', beam.calcBeamSize(obsid + '_deep-' + subchan + '-image-pb_warp.fits'))
+    report.updateObs(reportCsv, obsid, 'beamsize', beam.calcBeamSize(obsFiles['ipb_warp']))

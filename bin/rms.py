@@ -2,6 +2,7 @@ import numpy as np
 import astropy.units as u
 from astropy.io import fits
 from astropy.wcs import WCS
+from astropy.stats import sigma_clip, mad_std
 
 
 # Calculate the thermal noise for the image.
@@ -26,3 +27,23 @@ def calcRMSCoords(obsFile, ra, dec):
     decPixel = int(np.round(decPixel))
 
     return obsImage[decPixel, raPixel]
+
+# Estimate the RMS of the observation when BANE has not been run on it.
+def estimateRMS(obsFile):
+    halfWindowSize = 20
+
+    obsFits = fits.open(obsFile)
+    obsImage = obsFits[0].data
+    if obsImage.ndim > 2:
+        obsImage = obsImage[0,0,:,:]
+    obsImageShape = obsImage.shape
+    obsImageCentre = [int(obsImageShape[0]/2), int(obsImageShape[1]/2)]
+    obsFits.close()
+
+    # Calculate the RMS at the center of the final image.
+    window = obsImage[obsImageCentre[0]-halfWindowSize:obsImageCentre[0]+halfWindowSize, obsImageCentre[1]-halfWindowSize:obsImageCentre[1]+halfWindowSize]
+    window = sigma_clip(window, masked=False, stdfunc=mad_std, sigma=3)
+
+    obsRms = np.sqrt(np.mean(np.square(window)))
+
+    return obsRms

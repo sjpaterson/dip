@@ -24,7 +24,7 @@ measurementSet = obsid + '.ms'
 
 minuv=75                            # Minimum uvw for self-calibration (in lambda)
 msigma=3                            # S/N Level at which to choose masked pixels for deepclean
-tsigma=1                            # S/N Threshold at which to stop cleaning
+tsigma=0.5                            # S/N Threshold at which to stop cleaning
 
 
 # Set reference antenna.
@@ -67,36 +67,13 @@ if 'shift' not in chgcentreResult.stderr.decode('utf-8'):
 
 
 
-#if not os.path.exists(obsid + '_template.fits'):
-#    subprocess.run('wsclean -abs-mem 50 -mgain 1.0 -nmiter 1 -niter 0 -name ' + obsid + '_template -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -pol XX -data-column DATA -channel-range 4 5 -interval 4 5 -nwlayers 48 "' + measurementSet + '"', shell=True, check=True)
-#    subprocess.run('rm "' + obsid + '_template-dirty.fits' + '"', shell=True)
-#    subprocess.run('mv "' + obsid + '_template-image.fits' + '" "' + obsid + '_template.fits' + '"', shell=True)
-
-
-# Hardcoding John's PB script location for now
-# Also hardcoding creating four sub-band beams
-# pols = ['XX', 'XXi', 'XY', 'XYi', 'YX', 'YXi', 'YY', 'YYi']
-
-# for n in range(0,4):
-#     i = n * 6
-#     cstart = chans[i]
-#     j = i + 5
-#     cend = chans[j]
-
-#     for pol in pols:        
-#         # Check if the first pol exists, if not look it up.
-#         if not os.path.exists(obsid + '_000' + str(n) + '-' + pol + '-beam.fits'):
-#             subprocess.run('lookup_jones.py ' + obsid + ' _template.fits ' + obsid + '_000' + str(n) + '- -c ' + str(cstart) + '-' + str(cend) + ' --wsclean_names --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_jones.hdf5') + '"', shell=True, check=True)
-#         subprocess.run('ln -s "' + obsid + '_000' + str(n) + '-' + str(pol) + '-beam.fits' + '" "' + obsid + '_deep-000' + str(n) + '-beam-' + str(pol) + '.fits' + '"', shell=True)  
-
 # Set the tukey parameters.
 min_uv = '0'
 inner_width = str(tukey)
 tukey_cmd = ' -taper-inner-tukey ' + inner_width + ' -minuv-l ' + min_uv
-#subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -reuse-primary-beam -apply-primary-beam -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol I -join-channels -channels-out 4 -save-source-list -fit-spectral-pol 2 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
 
 # Clean the two main linear polizations.
-subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol xx,yy -join-channels -channels-out 4 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
+subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol xx,yy -link-polarizations xx,yy -join-channels -channels-out 4 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
 
 
 report.updateObs(reportCsv, obsid, 'image', 'Success')

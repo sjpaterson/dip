@@ -11,6 +11,7 @@ module load singularity
 export NXF_OPTS="-Xms500M -Xmx2G"
 export NXF_ANSI_LOG=false
 
+singularity exec /pawsey/mwa/singularity/python/python_latest.sif python bin/manageReport.py verify
 singularity exec /pawsey/mwa/singularity/python/python_latest.sif python bin/manageReport.py create 120
 
 nextflow run dip.nf -with-report
