@@ -36,6 +36,8 @@ obsFiles = dict(
     # Linear polarizations produced by WSCLEAN.
     xx = filePrefix + '-XX-image.fits',
     yy = filePrefix + '-YY-image.fits',
+    xx_rms = filePrefix + '-XX-image_rms.fits',
+    yy_rms = filePrefix + '-YY-image_rms.fits',
     # Linear polarizations with primary beam applied.
     xx_pb = filePrefix + '-XX-image-pb.fits',
     yy_pb = filePrefix + '-YY-image-pb.fits',
@@ -89,8 +91,14 @@ else:
     chanEnd = chanStart + 5
 
 # Calculate the RMS for each polarization.
-rmsXX = rms.estimateRMS(obsFiles['xx'])
-rmsYY = rms.estimateRMS(obsFiles['yy'])
+rmsEstXX = rms.estimateRMS(obsFiles['xx'])
+rmsEstYY = rms.estimateRMS(obsFiles['yy'])
+report.updateObs(reportCsv, obsid, 'rms_estimate_xx_' + subchan, rmsEstXX)
+report.updateObs(reportCsv, obsid, 'rms_estimate_yy_' + subchan, rmsEstYY)
+subprocess.run('BANE --cores 48 --compress --noclobber "' + obsFiles['xx'] + '"', shell=True, check=True)
+subprocess.run('BANE --cores 48 --compress --noclobber "' + obsFiles['yy'] + '"', shell=True, check=True)
+rmsXX = rms.calcRMS(obsFiles['xx_rms'])
+rmsYY = rms.calcRMS(obsFiles['yy_rms'])
 report.updateObs(reportCsv, obsid, 'rms_xx_' + subchan, rmsXX)
 report.updateObs(reportCsv, obsid, 'rms_yy_' + subchan, rmsYY)
 
@@ -121,8 +129,8 @@ subprocess.run('match_catalogues "' + obsFiles['xx_pb_cat'] + '" "' + FLUX_MODEL
 subprocess.run('match_catalogues "' + obsFiles['yy_pb_cat'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['yy_xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
 
 # Calculate the difference of the 20 brightest sources compared to GLEAM to prdouce the scaling factor A.
-Axx = catCalcs.calcA(obsFiles['xx_xm'], 20, FLUX_MODEL_CATALOGUE, metadata['FREQCENT'])
-Ayy = catCalcs.calcA(obsFiles['yy_xm'], 20, FLUX_MODEL_CATALOGUE, metadata['FREQCENT'])
+Axx = catCalcs.calcA(obsFiles['xx_xm'], 20, metadata['FREQCENT'])
+Ayy = catCalcs.calcA(obsFiles['yy_xm'], 20, metadata['FREQCENT'])
 
 # Convert the linear polarizations to Stokes I.
 obsXXHdu = fits.open(obsFiles['xx'])

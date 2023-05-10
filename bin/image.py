@@ -24,7 +24,8 @@ measurementSet = obsid + '.ms'
 
 minuv=75                            # Minimum uvw for self-calibration (in lambda)
 msigma=3                            # S/N Level at which to choose masked pixels for deepclean
-tsigma=0.5                            # S/N Threshold at which to stop cleaning
+tsigma=1                            # S/N Threshold at which to stop cleaning
+#tsigma=0.5                            # S/N Threshold at which to stop cleaning
 
 
 # Set reference antenna.

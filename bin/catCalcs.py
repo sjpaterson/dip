@@ -16,9 +16,12 @@ def calcA(matchedCatFile, numSources, freq):
     matchedCat = matchedCat[:numSources]
 
     matchedCat['gleam_flux'] = matchedCat['S_200'] * (np.float(freq) / 200.0) ** matchedCat['alpha']
-    fluxMean = matchedCat['flux'].mean()
-    gleamMean = matchedCat['gleam_flux'].mean()
+    matchedCat['flux_ratio'] = matchedCat['flux'] / matchedCat['gleam_flux']
+    
+    #fluxMean = matchedCat['flux'].mean()
+    #gleamMean = matchedCat['gleam_flux'].mean()
+    #A = fluxMean/gleamMean
 
-    A = fluxMean/gleamMean
+    A = matchedCat['flux_ratio'].mean()
         
     return A
