@@ -96,7 +96,7 @@ if action == 'verify':
     reportDF = reportDF[reportDF['generateCalibration'] == 'Success']
     reportDF = reportDF[reportDF['applyCalibration'] == 'Success']
     reportDF = reportDF[reportDF['flagUV'] == 'Success']
-    reportDF = reportDF[reportDF['uvSub'] == 'Success']
+    #reportDF = reportDF[reportDF['uvSub'] == 'Success']
     reportDF = reportDF[reportDF['image'] == 'Success']
     reportDF = reportDF[reportDF['postImage_0000'] == 'Success']
     reportDF = reportDF[reportDF['postImage_0001'] == 'Success']

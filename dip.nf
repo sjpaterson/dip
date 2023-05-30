@@ -70,6 +70,7 @@ process applyCalibration {
     """
 }
 
+
 process flagUV {
   input:
     path obsid
@@ -83,29 +84,16 @@ process flagUV {
     """
 }
 
-process uvSub {
-  time 2.hour
-  
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
-    export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
-    cd $obsid
-    uvSub.py $projectDir $obsid $params.reportCsv
-    """
-}
-
 process image {
-  publishDir params.obsdir, mode: 'copy', overwrite: true
+  label 'dip'
+  // If you need the entire image output for debugging or assessing the observations, uncomment the below.
+  // publishDir params.obsdir, mode: 'copy', overwrite: true
 
   // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
-  time { 150.minutes * task.attempt }
+  time { 220.minutes * task.attempt }
   errorStrategy 'retry'
   maxRetries 3
+  memory '110G'
 
   input:
     path obsid
@@ -128,8 +116,12 @@ process postImage {
     path obsid
     each subchan
   output:
-    path "${obsid}/*deep*"
-    path "${obsid}/*_xm*"
+    // Only output the final images. If the interim files are required, uncomment the publish option in the image process.
+    path "${obsid}/*_deep-*-image-pb_warp.fits"
+    path "${obsid}/*_deep-*-image-pb_warp_comp.fits"
+    path "${obsid}/*_deep-*-image-pb_warp_rms.fits"
+    path "${obsid}/*_deep-*-image-pb_warp_bkg.fits"
+    path "${obsid}/*_transient.hdf5"
 
     """
     cd $obsid
@@ -149,13 +141,11 @@ workflow {
   // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
   checkBeamData()
   
-  // No observations requiring autoflag so have left it out, will revisit once the full list has been obtained.
   // Process each observation in the specified observation directory.
   startObsProcessing(obsDirCh, checkBeamData.out)
   generateCalibration(startObsProcessing.out)
   applyCalibration(generateCalibration.out)
   flagUV(applyCalibration.out)
-  uvSub(flagUV.out)
-  image(uvSub.out)
+  image(flagUV.out)
   postImage(image.out, subChans)
 }

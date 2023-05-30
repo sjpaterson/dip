@@ -47,3 +47,14 @@ def estimateRMS(obsFile):
     obsRms = np.sqrt(np.mean(np.square(window)))
 
     return obsRms
+
+def timeDiffRMS(obsFileT1, obsFileT2):
+    obsFitsT1 = fits.open(obsFileT1)
+    obsFitsT2 = fits.open(obsFileT2)
+    obsImageT1 = obsFitsT1[0].data
+    obsImageT2 = obsFitsT2[0].data
+    obsFitsT1[0].data = np.std(np.vstack((obsImageT1, obsImageT2)), axis=0, ddof=1).reshape(obsFitsT1[0].data.shape)
+    width = obsFitsT1[0].data.shape[-1]
+    sigma = np.mean(obsFitsT1[0].data[..., width//4:3*width//4, width//4:3*width//4])
+    print('Thermal Noise Level: ' + str(sigma))
+    return sigma

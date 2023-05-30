@@ -305,7 +305,7 @@ def casa_clean_source(
     """
     outliers["imagename"].append(f"outlier{src.name}")
     outliers["phasecenter"].append(
-        f"J2000 {str(src.pos.ra.to_string(u.hour))} {str(src.pos.dec.to_string(u.degree, alwayssign=True))}"
+        f"{str(src.pos.ra.to_string(u.hour))} {str(src.pos.dec.to_string(u.degree, alwayssign=True))}"
     )
     outliers["imsize"].append(list(imsize))
 
@@ -362,7 +362,8 @@ def wsclean_script(
             )
             out.write(taql)
 
-        coords = f"coords=$(calc_optimum_pointing.py --metafits '{metafits}') \n\n"
+        #coords = f"coords=$(calc_optimum_pointing.py --metafits '{metafits}') \n\n"
+        coords = 'BlahCoordsBlah'
         out.write(coords)
 
         chg = (
@@ -520,6 +521,7 @@ def ateam_model_creation(
             )
 
         elif mode == "wsclean":
+            return model_dict
             wsclean_script(
                 model_dict,
                 metafits_file,
@@ -531,7 +533,7 @@ def ateam_model_creation(
                 print(f"Writing {no_comps} components to {model_output}")
                 out_file.write(model_text)
 
-    return no_comps
+    return None
 
 
 def attach_units_or_None(param, to_unit) -> Tuple["u", None]:

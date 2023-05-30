@@ -63,6 +63,7 @@ def calibrate(localMeasurementSet, solution, ts=None):
         calibrateCmd = 'calibrate ' + argts + arg1 + arg2 + arg3 + arg4 + arg5 + arg6 + arg7
 
     subprocess.run(calibrateCmd, shell=True, check=True)
+    print(calibrateCmd)
 
 
 # Run the aocal_plot.py script from the mwa-calplots GitHub project.
@@ -94,14 +95,6 @@ metaHdu.close()
 # Crop the GGSM catalogue to the 250 brightest sources near the pointing location and bulld the calibration model from them.
 cc.run(ra=metadata['RA'], dec=metadata['DEC'], radius=30, top_bright=250, metafits=metafits, cat=catGGSM, fluxcol='S_200', plotFile=obsid + '_local_gleam_model.png', output=catCropped)
 vo2m.run(catalogue=catCropped, point=True, output=calibrationModel, racol='RAJ2000', decol='DEJ2000', acol='a', bcol='b', pacol='pa', fluxcol='S_200', alphacol='alpha')
-
-
-# Check whether the phase centre has already changed
-# Calibration will fail if it has, so measurement set must be shifted back to its original position
-chgcentreResult = subprocess.run('chgcentre ' + measurementSet, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-if 'shift' in chgcentreResult.stdout.decode('utf-8'):
-    coords = optPointing.calc_peak_beam(metafits)
-    subprocess.run('chgcentre ' + measurementSet + ' ' + coords, shell=True, check=True)
 
 
 # Ionospheric triage.

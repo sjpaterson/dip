@@ -4,7 +4,7 @@ import os
 import sys
 import report
 import subprocess
-import gleamx.calc_pointing as calcPointing
+
 from astropy.io import fits
 
 
@@ -22,25 +22,15 @@ reportCsv = sys.argv[5]
 metafits = obsid + '.metafits'
 measurementSet = obsid + '.ms'
 
-minuv=75                            # Minimum uvw for self-calibration (in lambda)
 msigma=3                            # S/N Level at which to choose masked pixels for deepclean
-tsigma=1                            # S/N Threshold at which to stop cleaning
-#tsigma=0.5                            # S/N Threshold at which to stop cleaning
+autoThreshold = 1                   # S/N Threshold at which to stop cleaning
+min_uv = 0
+nmitter = 10
+basescale=0.6
+imsize=10000
+chans = 4
+mgain = 0.85
 
-
-# Set reference antenna.
-if int(obsid) > 1191580576:
-    telescope="MWALB"
-    basescale=0.6
-    imsize=8000
-elif int(obsid) > 1151402936:
-    telescope="MWAHEX"
-    basescale=2.0
-    imsize=2000
-else:
-    telescope="MWA128T"
-    basescale=1.1
-    imsize=4000
 
 # Import header information from the metafits file.
 metaHdu = fits.open(metafits)
@@ -48,33 +38,36 @@ metadata = metaHdu[0].header
 metaHdu.close()
 
 
-chans = metadata['CHANNELS'].split(',')
 scale = basescale / metadata['CENTCHAN']
 scale = round(scale, 8)
 
 
-# Calculate min uvw in metres
-minuvm = 234 * minuv / metadata['CENTCHAN']
-
-
-# Check whether the phase centre has already changed, if not shift the pointing centre to point straight up, which approximates minw without making the phase centre rattle around.
-chgcentreResult = subprocess.run('chgcentre ' + measurementSet, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-if 'shift' not in chgcentreResult.stderr.decode('utf-8'):
-    # Determine whether to shift the pointing centre to be more optimally-centred on the peak of the primary beam sensitivity.
-    coords = calcPointing.calc_optimal_ra_dec(metafits).to_string("hmsdms")
-    subprocess.run('chgcentre ' + measurementSet + ' ' + coords, shell=True, check=True)
-    # Shift to point straight up.
-    subprocess.run('chgcentre -zenith -shiftback ' + measurementSet, shell=True, check=True)
-
-
-
-# Set the tukey parameters.
-min_uv = '0'
-inner_width = str(tukey)
-tukey_cmd = ' -taper-inner-tukey ' + inner_width + ' -minuv-l ' + min_uv
-
 # Clean the two main linear polizations.
-subprocess.run('wsclean -abs-mem 50 -multiscale -mgain 0.85 -multiscale-gain 0.15 -nmiter 5 -niter 10000000 -auto-mask ' + str(msigma) + ' -auto-threshold ' + str(tsigma) + ' -name ' + obsid + '_deep -size ' + str(imsize) + ' ' + str(imsize) + ' -scale ' + str(scale) + ' -weight briggs ' + str(robust) + tukey_cmd + ' -pol xx,yy -link-polarizations xx,yy -join-channels -channels-out 4 -data-column DATA ' + obsid + '.ms', shell=True, check=True)
+cleanCmd = f'''wsclean \
+    -gridder wgridder \
+    -abs-mem 100 \
+    -multiscale \
+    -mgain {mgain} \
+    -multiscale-gain 0.15 \
+    -nmiter {nmitter} \
+    -niter 10000000 \
+    -mf-weighting \
+    -auto-mask {msigma} \
+    -auto-threshold {autoThreshold} \
+    -name {obsid}_deep \
+    -size {imsize} {imsize} \
+    -scale {scale} \
+    -weight briggs {robust} \
+    -taper-inner-tukey {tukey} \
+    -minuv-l {min_uv} \
+    -pol xx,yy \
+    -link-polarizations xx,yy \
+    -join-channels \
+    -channels-out {chans} \
+    -data-column DATA \
+    {measurementSet}'''
 
+print(cleanCmd)
+subprocess.run(cleanCmd, shell=True, check=True)
 
 report.updateObs(reportCsv, obsid, 'image', 'Success')
