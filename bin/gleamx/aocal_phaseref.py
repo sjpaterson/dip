@@ -47,7 +47,7 @@ def run(infilename, outfilename, refant, xy=0.0, dxy=0.0, ms=None, store_true=Fa
             len(freqs) == ao.n_chan
         ), f"Number of frequency solutions in the calibration file does not match the number of channels in {ms}"
 
-        xy_phasor0 = np.complex(np.cos(np.radians(xy)), np.sin(np.radians(xy)))
+        xy_phasor0 = complex(np.cos(np.radians(xy)), np.sin(np.radians(xy)))
         xy_phasor1 = np.zeros((1, 1, ao.n_chan), dtype=np.complex128)
         xy_phasor1.real += np.cos(np.radians(dxy * freqs)).reshape(1, 1, ao.n_chan)
         xy_phasor1.imag += np.sin(np.radians(dxy * freqs)).reshape(1, 1, ao.n_chan)

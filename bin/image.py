@@ -29,7 +29,7 @@ nmitter = 10
 basescale=0.6
 imsize=10000
 chans = 4
-mgain = 0.85
+mgain = 0.75
 
 
 # Import header information from the metafits file.
@@ -64,6 +64,7 @@ cleanCmd = f'''wsclean \
     -link-polarizations xx,yy \
     -join-channels \
     -channels-out {chans} \
+    -fit-spectral-pol 2 \
     -data-column DATA \
     {measurementSet}'''
 

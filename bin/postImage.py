@@ -95,8 +95,8 @@ rmsEstXX = rms.estimateRMS(obsFiles['xx'])
 rmsEstYY = rms.estimateRMS(obsFiles['yy'])
 report.updateObs(reportCsv, obsid, 'rms_estimate_xx_' + subchan, rmsEstXX)
 report.updateObs(reportCsv, obsid, 'rms_estimate_yy_' + subchan, rmsEstYY)
-subprocess.run('BANE --cores 48 --compress --noclobber "' + obsFiles['xx'] + '"', shell=True, check=True)
-subprocess.run('BANE --cores 48 --compress --noclobber "' + obsFiles['yy'] + '"', shell=True, check=True)
+subprocess.run('BANE --cores 1 --compress --noclobber "' + obsFiles['xx'] + '"', shell=True, check=True)
+subprocess.run('BANE --cores 1 --compress --noclobber "' + obsFiles['yy'] + '"', shell=True, check=True)
 rmsXX = rms.calcRMS(obsFiles['xx_rms'])
 rmsYY = rms.calcRMS(obsFiles['yy_rms'])
 report.updateObs(reportCsv, obsid, 'rms_xx_' + subchan, rmsXX)
@@ -123,14 +123,14 @@ with fits.open(obsFiles['yy']) as obsHdu:
 
 
 # # Find sources on each polization.
-subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['xx_pb'] + '" "' + obsFiles['xx_pb'] + '"', shell=True, check=True)
-subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['yy_pb'] + '" "' + obsFiles['yy_pb'] + '"', shell=True, check=True)
+subprocess.run('aegean --autoload --table="' + obsFiles['xx_pb'] + '" "' + obsFiles['xx_pb'] + '"', shell=True, check=True)
+subprocess.run('aegean --autoload --table="' + obsFiles['yy_pb'] + '" "' + obsFiles['yy_pb'] + '"', shell=True, check=True)
 subprocess.run('match_catalogues "' + obsFiles['xx_pb_cat'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['xx_xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
 subprocess.run('match_catalogues "' + obsFiles['yy_pb_cat'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['yy_xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
 
 # Calculate the difference of the 20 brightest sources compared to GLEAM to prdouce the scaling factor A.
-Axx = catCalcs.calcA(obsFiles['xx_xm'], 20, metadata['FREQCENT'])
-Ayy = catCalcs.calcA(obsFiles['yy_xm'], 20, metadata['FREQCENT'])
+Axx = catCalcs.calcA(obsFiles['xx_xm'], metadata['FREQCENT'])
+Ayy = catCalcs.calcA(obsFiles['yy_xm'], metadata['FREQCENT'])
 
 # Convert the linear polarizations to Stokes I.
 obsXXHdu = fits.open(obsFiles['xx'])
@@ -155,8 +155,8 @@ os.remove(obsFiles['ipb'])
 os.rename(obsFiles['ipb_mask'], obsFiles['ipb'])
 
 # Calculate RMS and detect sources on the image.
-subprocess.run('BANE --cores 48 --compress --noclobber "' + obsFiles['ipb'] + '"', shell=True, check=True)
-subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['ipb'] + '" "' + obsFiles['ipb'] + '"', shell=True, check=True)
+subprocess.run('BANE --cores 1 --compress --noclobber "' + obsFiles['ipb'] + '"', shell=True, check=True)
+subprocess.run('aegean --autoload --table="' + obsFiles['ipb'] + '" "' + obsFiles['ipb'] + '"', shell=True, check=True)
     
 # Check that a sufficient number of sources were detected.
 with fits.open(obsFiles['ipb_cat']) as catHdu:
@@ -193,7 +193,7 @@ fits.setval(obsFiles['ipb_warp_bkg'], 'BSCALE', value=factor)
 
 
 # Rerun the source finding on the flux warped image.
-subprocess.run('aegean --cores 1 --autoload --table="' + obsFiles['ipb_warp'] + '" "' + obsFiles['ipb_warp'] + '"', shell=True, check=True)
+subprocess.run('aegean --autoload --table="' + obsFiles['ipb_warp'] + '" "' + obsFiles['ipb_warp'] + '"', shell=True, check=True)
 
 # Generate a weight map for mosaicking.
 #subprocess.run('lookup_beam.py ' + obsFiles['ipb_warp'] + ' ' + filePrefix + '-image-pb_warp- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)

@@ -2,16 +2,20 @@ BootStrap: debootstrap
 OSVersion: stable
 MirrorURL: http://ftp.us.debian.org/debian/
 
+%environment
+    export PATH="/opt/mwa-reduce/build:$PATH"
+
 %post
     apt-get update
     apt-get -y install python3 pip git wget
-    pip install numpy pandas astropy scipy matplotlib h5py wget
+    pip install numpy pandas astropy scipy matplotlib h5py wget --break-system-packages
     
     apt-get -y install \
     casacore-dev casacore-tools libgsl-dev libhdf5-dev \
     libfftw3-dev libboost-dev \
     libboost-date-time-dev libboost-filesystem-dev \
     libboost-program-options-dev libboost-system-dev \
+    libboost-thread-dev \
     libcfitsio-dev cmake g++ \
     libblas-dev liblapack-dev vim \
     python-is-python3
@@ -22,14 +26,16 @@ MirrorURL: http://ftp.us.debian.org/debian/
     mkdir build && cd build
     cmake -DCMAKE_INSTALL_PREFIX=/usr/local/EveryBeam/ ..
     make install
-    cd ../..
+    cd /
+    rm -rf EveryBeam
 
     git clone https://git.astron.nl/RD/idg.git --recursive
     cd idg && mkdir build && cd build
     cmake -DCMAKE_INSTALL_PREFIX=/usr/local/idg/ ..
     make
     make install
-    cd ../..
+    cd /
+    rm -rf idg
 
     git clone https://gitlab.com/aroffringa/wsclean.git
     cd wsclean
@@ -38,30 +44,44 @@ MirrorURL: http://ftp.us.debian.org/debian/
     cmake ../ -DCMAKE_PREFIX_PATH=/usr/local/idg/
     make -j 4
     make install
-    cd ../..
+    cd /
+    rm -rf wsclean
 
-    #git clone https://github.com/johnsmorgan/mwa_pb_lookup.git
     git clone https://github.com/sjpaterson/mwa_pb_lookup.git
     cd mwa_pb_lookup
     python setup.py install
-    cd ..
+    cd /
+    rm -rf mwa_pb_lookup
 
 
-    apt-get -y install gfortran
-    pip install racs-tools AegeanTools
+    apt-get -y install gfortran libxml++2.6-dev
+    pip install racs-tools --break-system-packages
+    pip install git+https://github.com/PaulHancock/Aegean.git --break-system-packages
 
     git clone https://github.com/tjgalvin/fits_warp.git
     cd fits_warp
     python setup.py install
-    cd ..
+    cd /
+    rm -rf fits_warp
 
     git clone https://gitlab.com/Sunmish/flux_warp.git
     cd flux_warp
     python setup.py install
-    cd ..
+    cd /
+    rm -rf flux_warp
 
-    git clone https://github.com/MWATelescope/mwa-calplots.git
+    git clone https://github.com/sjpaterson/mwa-calplots.git
     cd mwa-calplots
     python setup.py install
-    cd ..
+    cd /
+    rm -rf mwa-calplots
+
+    # From private repository.
+    cd mwa-reduce
+    mkdir build
+    cd build
+    cmake ../
+    make -j8
+    cd /
+    mv mwa-reduce opt
 

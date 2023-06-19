@@ -17,22 +17,24 @@ process checkBeamData{
   """
 }
 
-// A secondart check to ensure the directory is a synbolic link (observation has not processed).
-// If it isn't then it has been processed, then exit with error.
-// Else ocntinue and clear the report entry.
+// A secondary check to ensure the directory is a synbolic link (observation has not been processed).
+// If it isn't then it has been processed, therefore exit with error.
+// Else continue and clear the report entry and flag any bad tiles.
 process startObsProcessing {
   input:
     path obsid
-    val ready
+    // val ready
   output:
     path obsid
 
     """
     obsStartCheckReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
+    cd $obsid
+    flagTiles.py $projectDir $obsid $params.reportCsv
     """
 }
 
-process generateCalibration {
+process calibrate {
   input:
     path obsid
   output:
@@ -42,55 +44,33 @@ process generateCalibration {
     export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
     export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
     cd $obsid
-    generateCalibration.py $projectDir $obsid $params.reportCsv
+    calibrate.py $projectDir $obsid $params.reportCsv
     """
 }
 
-process applyCalibration {
+process uvSub {
+  time 4.hour
+  memory '110G'
+  
   input:
     path obsid
   output:
     path obsid
 
     """
-    #! /bin/bash -l
-    
+    export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
+    export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
     cd $obsid
-    measurementSet="${obsid}.ms"
-    calibrationFile="${obsid}_local_gleam_model_solutions_initial_ref.bin"
-
-    if [[ ! -e "\${calibrationFile}" ]]
-    then
-      echo "Unable to load calibration file: \${calibrationFile}"
-      exit -1
-    fi
-
-    applysolutions -nocopy "\${measurementSet}" "\${calibrationFile}"
-    updateReport.py "$params.reportCsv" ${obsid} applyCalibration Success
-    """
-}
-
-
-process flagUV {
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    cd $obsid
-    ${projectDir}/bin/gleamx/ms_flag_by_uvdist.py "${obsid}.ms" DATA -a
-    updateReport.py "$params.reportCsv" ${obsid} flagUV Success
+    uvSub.py $projectDir $obsid $params.briggs $params.tukey $params.reportCsv
     """
 }
 
 process image {
-  label 'dip'
   // If you need the entire image output for debugging or assessing the observations, uncomment the below.
   // publishDir params.obsdir, mode: 'copy', overwrite: true
 
   // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
-  time { 220.minutes * task.attempt }
+  time { 360.minutes * task.attempt }
   errorStrategy 'retry'
   maxRetries 3
   memory '110G'
@@ -106,10 +86,28 @@ process image {
     """
 }
 
+process createVarCube {
+  publishDir params.obsdir, mode: 'copy', overwrite: true
+
+  // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
+  memory '110G'
+
+  input:
+    path obsid
+  output:
+    path obsid
+
+    """
+    cd $obsid
+    cleanVar.py $obsid
+    make_imstack.py "${obsid}_transient"
+    """
+}
+
 process postImage {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
-  time 2.hour
+  time 3.hour
   memory '176G'
 
   input:
@@ -139,13 +137,14 @@ workflow {
   subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
 
   // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
-  checkBeamData()
+  // checkBeamData()
   
   // Process each observation in the specified observation directory.
-  startObsProcessing(obsDirCh, checkBeamData.out)
-  generateCalibration(startObsProcessing.out)
-  applyCalibration(generateCalibration.out)
-  flagUV(applyCalibration.out)
-  image(flagUV.out)
-  postImage(image.out, subChans)
+  //startObsProcessing(obsDirCh, checkBeamData.out)
+  startObsProcessing(obsDirCh)
+  calibrate(startObsProcessing.out)
+  uvSub(calibrate.out)
+  image(uvSub.out)
+  createVarCube(image.out)
+  postImage(createVarCube.out, subChans)
 }

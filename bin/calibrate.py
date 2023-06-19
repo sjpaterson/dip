@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+from enum import Flag
 import os
 import sys
-#import wget
+import wget
 import report
 import subprocess
 import gleamx.crop_catalogue as cc
@@ -11,8 +12,10 @@ import gleamx.aocal_diff as aocal_diff
 import gleamx.aocal_phaseref as aocal_phaseref
 import gleamx.calc_optimum_pointing as optPointing
 import gleamx.check_assign_solutions as checkSolutions
+import gleamx.ms_flag_by_uvdist as flagUV
 
 from astropy.io import fits
+from calplots import aocal, aocal_plot
 
 
 if len(sys.argv) != 4:
@@ -48,44 +51,31 @@ def calibrate(localMeasurementSet, solution, ts=None):
     minuvm = 234 * minuv / int(metadata['CENTCHAN'])
     maxuvm = 390000 / (int(metadata['CENTCHAN']) + 11)
 
-    argts = ' -t ' + str(ts)
-    arg1  = ' -j ' + str(cores)
-    arg2  = ' -absmem ' + str(mem)
-    arg3  = ' -m "' + calibrationModel + '"'
-    arg4  = ' -minuv ' + str(minuvm)
-    arg5  = ' -maxuv ' + str(maxuvm)
-    arg6  = ' -applybeam -mwa-path "' + os.path.join(projectdir, 'beamdata') + '"'
-    arg7  = ' "' + localMeasurementSet + '" "' + solution + '"'
+    argts = f'-t {ts}'
+    args = f'''-j {cores} \
+        -absmem {mem} \
+        -m "{calibrationModel}" \
+        -minuv {minuvm} \
+        -maxuv {maxuvm} \
+        -applybeam \
+        -mwa-path "{os.path.join(projectdir, 'beamdata')}" \
+        "{localMeasurementSet}" \
+        "{solution}"'''
 
     if ts == None:
-        calibrateCmd = 'calibrate ' + arg1 + arg2 + arg3 + arg4 + arg5 + arg6 + arg7
+        calibrateCmd = f'calibrate {args}'
     else:
-        calibrateCmd = 'calibrate ' + argts + arg1 + arg2 + arg3 + arg4 + arg5 + arg6 + arg7
+        calibrateCmd = f'calibrate {argts} {args}'
 
     subprocess.run(calibrateCmd, shell=True, check=True)
     print(calibrateCmd)
 
 
-# Run the aocal_plot.py script from the mwa-calplots GitHub project.
-# https://github.com/MWATelescope/mwa-calplots
-def aocal_plot(solution, localRefant):
-    plotCmd = 'aocal_plot.py --refant=' + str(localRefant) + ' --amp_max=2 "' + solution + '"'
-    subprocess.run(plotCmd, shell=True, check=True)
-
-
 
 # Check to see if the metafits file has been downloaded, if not, download it.
-# Would prefer to use the wget library, but must wait until new container is made.
 if not os.path.exists(metafits):
-    # wget.download('http://ws.mwatelescope.org/metadata/fits?obs_id=' + obsid, metafits)
-    metaDownload = subprocess.run('wget -O "' + metafits + '" http://ws.mwatelescope.org/metadata/fits?obs_id=' + obsid, shell=True)
-    # The above creates a 0b file if it fails, need to remove this before erroring out.
-    if metaDownload.returncode != 0:
-        subprocess.run('rm "' + metafits + '"', shell=True)
-        report.updateObs(reportCsv, obsid, 'generateCalibration', 'Fail - Unable to download metadata.')
-        exit(-1)
-
-
+    wget.download('http://ws.mwatelescope.org/metadata/fits?obs_id=' + obsid, metafits)
+    
 
 # Import header information from the metafits file.
 metaHdu = fits.open(metafits)
@@ -101,7 +91,10 @@ vo2m.run(catalogue=catCropped, point=True, output=calibrationModel, racol='RAJ20
 ts = 10  # Interval for ionospheric triage (in time steps).
 solution = obsid + '_local_gleam_model_solutions_ts' + str(ts) + '.bin'
 calibrate(measurementSet, solution, ts)
-aocal_plot(solution, refant)
+#aocal_plot(solution, refant)
+plotFilename = solution[:-4]
+ao = aocal.fromfile(solution)
+aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2, testTiles=False)
 aocal_diff.run(solution, obsid, metafits=metafits, refant=refant)
 
 
@@ -112,15 +105,42 @@ calibrate(measurementSet, solution)
 # Create a version divided through by the reference antenna, so that all observations have the same relative XY phase, allowing polarisation calibration solutions to be transferred.
 # This also sets the cross-terms to zero by default.
 aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=measurementSet)
-aocal_plot(solutionRef, refant)
+#aocal_plot(solutionRef, refant)
+plotFilename = solutionRef[:-4]
+ao = aocal.fromfile(solutionRef)
+badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
 
+# Flag any bad tiles detected.
+if len(badTiles) > 0:
+    # Flag the bad tiles.
+    badTilesStr = ' '.join(map(str, badTiles))
+    subprocess.run(f'flagantennae {measurementSet} {badTilesStr}', shell=True, check=True)
+    report.updateObs(reportCsv, obsid, 'flagged2', badTilesStr)
+
+    # Recalibrate
+    calibrate(measurementSet, solution)
+    aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=measurementSet)
+    plotFilename = solutionRef[:-4] + '_recal'
+    ao = aocal.fromfile(solutionRef)
+    badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
+
+    # IF there are still abd tiles, error out.
+    if len(badTiles) > 0:
+        report.updateObs(reportCsv, obsid, 'calibration', 'Fail - Calibration Error.')
+        exit(-1)
 
 # Test to see if the calibration solution meets minimum quality control. This is a simple check based on the number of flagged solutions.
 if not checkSolutions.check_solutions(aofile=solutionRef):
     print('Solution Failed') 
     subprocess.run('mv "' + solutionRef + '" "' + obsid + '_local_gleam_model_solutions_initial_ref_failed.bin"', shell=True)
-    report.updateObs(reportCsv, obsid, 'generateCalibration', 'Fail - Solution does not meet min quality.')
+    report.updateObs(reportCsv, obsid, 'calibration', 'Fail - Solution does not meet min quality.')
     report.updateObs(reportCsv, obsid, 'status', 'Failed')
     exit(-1)
 
-report.updateObs(reportCsv, obsid, 'generateCalibration', 'Success')
+# Apply the solution
+subprocess.run(f'applysolutions -nocopy "{measurementSet}" "{solutionRef}"', shell=True, check=True)
+
+# Flag by UV dist.
+flagUV.run(measurementSet, 'DATA', apply=True)
+
+report.updateObs(reportCsv, obsid, 'calibration', 'Success')

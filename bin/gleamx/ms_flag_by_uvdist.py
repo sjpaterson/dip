@@ -198,53 +198,17 @@ def get_baseline_stats(
         return baselines
 
 
-def main():
-    """
-    """
-
-    ps = ArgumentParser(
-        description="Find baselines to flag - can be memory intensive so may not work on large MeasurementSets."
-    )
-    ps.add_argument("ms", type=str, help="name of MeasurementSet")
-    ps.add_argument(
-        "column", type=str, help="name of column in MeasurementSet to search on."
-    )
-    ps.add_argument(
-        "-s",
-        "--sigma",
-        type=float,
-        default=3,
-        help="baselines with amplitudes about sigma times the standard deviation in a sliding window that we will be reported for flagging.",
-    )
-    ps.add_argument(
-        "-w",
-        "--window",
-        type=float,
-        default=5000,
-        help="sliding window used for searching, in number of baselines",
-    )  # fullish range
-    ps.add_argument(
-        "-a",
-        "--apply",
-        action="store_true",
-        help="Flag baselines if >1 baselines are selected. If not selected then a list of CASA-compatible baslines will be printed that can be fed to CASA's flagdata.",
-    )
-
-    args = ps.parse_args()
-
-    mset = MeasurementSet(args.ms, args.column)
-    d = chan_avg(mset, args.column, stride=50000)
-    if args.apply:
+def run(ms, column, sigma=3, window=5000, apply=False):
+    mset = MeasurementSet(ms, column)
+    d = chan_avg(mset, column, stride=50000)
+    if apply:
         baselines = get_baseline_stats(
-            mset, d, window=args.window, sigma=args.sigma, return_baselines=True
+            mset, d, window=window, sigma=sigma, return_baselines=True
         )
         if len(baselines) > 0:
-            MeasurementSet.flag_baselines(args.ms, baselines)
+            MeasurementSet.flag_baselines(ms, baselines)
         else:
             print("No baselines to flag.")
     else:
-        get_baseline_stats(mset, d, window=args.window, sigma=args.sigma)
+        get_baseline_stats(mset, d, window=window, sigma=sigma)
 
-
-if __name__ == "__main__":
-    main()
