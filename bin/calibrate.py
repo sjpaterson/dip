@@ -5,6 +5,7 @@ import os
 import sys
 import wget
 import report
+import flagTiles
 import subprocess
 import gleamx.crop_catalogue as cc
 import gleamx.vo2model as vo2m
@@ -82,6 +83,13 @@ metaHdu = fits.open(metafits)
 metadata = metaHdu[0].header
 metaHdu.close()
 
+
+# Flag any previously recorded bad tiles.
+knownBadTiles = flagTiles.findBadTiles(obsid, projectdir)
+if len(knownBadTiles) > 0:
+    subprocess.run(f'flagantennae {measurementSet} {knownBadTiles}', shell=True, check=True)
+
+
 # Crop the GGSM catalogue to the 250 brightest sources near the pointing location and bulld the calibration model from them.
 cc.run(ra=metadata['RA'], dec=metadata['DEC'], radius=30, top_bright=250, metafits=metafits, cat=catGGSM, fluxcol='S_200', plotFile=obsid + '_local_gleam_model.png', output=catCropped)
 vo2m.run(catalogue=catCropped, point=True, output=calibrationModel, racol='RAJ2000', decol='DEJ2000', acol='a', bcol='b', pacol='pa', fluxcol='S_200', alphacol='alpha')
@@ -112,7 +120,9 @@ badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
 
 # Flag any bad tiles detected.
 if len(badTiles) > 0:
-    # Flag the bad tiles.
+    # Flag the tiles for the rest of the night.
+    flagTiles.flagNight(obsid, projectdir, badTiles)
+    # Flag the bad tiles for this observation.
     badTilesStr = ' '.join(map(str, badTiles))
     subprocess.run(f'flagantennae {measurementSet} {badTilesStr}', shell=True, check=True)
     report.updateObs(reportCsv, obsid, 'flagged2', badTilesStr)
@@ -123,11 +133,6 @@ if len(badTiles) > 0:
     plotFilename = solutionRef[:-4] + '_recal'
     ao = aocal.fromfile(solutionRef)
     badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
-
-    # IF there are still abd tiles, error out.
-    if len(badTiles) > 0:
-        report.updateObs(reportCsv, obsid, 'calibration', 'Fail - Calibration Error.')
-        exit(-1)
 
 # Test to see if the calibration solution meets minimum quality control. This is a simple check based on the number of flagged solutions.
 if not checkSolutions.check_solutions(aofile=solutionRef):

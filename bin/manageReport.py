@@ -93,9 +93,8 @@ if action == 'verify':
     reportDF = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
     # Filter the reportDF to remove any bad observations.
-    reportDF = reportDF[reportDF['generateCalibration'] == 'Success']
-    reportDF = reportDF[reportDF['applyCalibration'] == 'Success']
-    reportDF = reportDF[reportDF['flagUV'] == 'Success']
+    reportDF = reportDF[reportDF['calibration'] == 'Success']
+    #reportDF = reportDF[reportDF['flagUV'] == 'Success']
     #reportDF = reportDF[reportDF['uvSub'] == 'Success']
     reportDF = reportDF[reportDF['image'] == 'Success']
     reportDF = reportDF[reportDF['postImage_0000'] == 'Success']

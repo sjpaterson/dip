@@ -19,7 +19,7 @@ process checkBeamData{
 
 // A secondary check to ensure the directory is a synbolic link (observation has not been processed).
 // If it isn't then it has been processed, therefore exit with error.
-// Else continue and clear the report entry and flag any bad tiles.
+// Else continue and clear the report entry.
 process startObsProcessing {
   input:
     path obsid
@@ -29,8 +29,6 @@ process startObsProcessing {
 
     """
     obsStartCheckReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
-    cd $obsid
-    flagTiles.py $projectDir $obsid $params.reportCsv
     """
 }
 
@@ -45,23 +43,6 @@ process calibrate {
     export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
     cd $obsid
     calibrate.py $projectDir $obsid $params.reportCsv
-    """
-}
-
-process uvSub {
-  time 4.hour
-  memory '110G'
-  
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
-    export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
-    cd $obsid
-    uvSub.py $projectDir $obsid $params.briggs $params.tukey $params.reportCsv
     """
 }
 
@@ -86,25 +67,8 @@ process image {
     """
 }
 
-process createVarCube {
-  publishDir params.obsdir, mode: 'copy', overwrite: true
-
-  // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
-  memory '110G'
-
-  input:
-    path obsid
-  output:
-    path obsid
-
-    """
-    cd $obsid
-    cleanVar.py $obsid
-    make_imstack.py "${obsid}_transient"
-    """
-}
-
 process postImage {
+  label 'gleamx'
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
   time 3.hour
@@ -119,6 +83,7 @@ process postImage {
     path "${obsid}/*_deep-*-image-pb_warp_comp.fits"
     path "${obsid}/*_deep-*-image-pb_warp_rms.fits"
     path "${obsid}/*_deep-*-image-pb_warp_bkg.fits"
+    path "${obsid}/*weight*.fits"
     path "${obsid}/*_transient.hdf5"
 
     """
@@ -136,6 +101,7 @@ workflow {
   obsDirCh = Channel.fromPath(obsDirFull, type: 'dir').filter{java.nio.file.Files.isSymbolicLink(it)}
   subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
 
+  // To move to the sbatch instead to not need to wait to spawn a new job
   // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
   // checkBeamData()
   
@@ -143,8 +109,6 @@ workflow {
   //startObsProcessing(obsDirCh, checkBeamData.out)
   startObsProcessing(obsDirCh)
   calibrate(startObsProcessing.out)
-  uvSub(calibrate.out)
-  image(uvSub.out)
-  createVarCube(image.out)
-  postImage(createVarCube.out, subChans)
+  image(calibrate.out)
+  postImage(image.out, subChans)
 }

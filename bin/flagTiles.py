@@ -1,47 +1,57 @@
-#!/usr/bin/env python3
-
 import os
 import sys
-import report
-import subprocess
+import pandas as pd
+from astropy.time import Time
 
-if len(sys.argv) != 4:
-    print('ERROR: Incorrect number of parameters.')
-    exit(-1)
-
-projectdir = sys.argv[1]
-obsid = int(sys.argv[2])
-reportCsv = sys.argv[3]
-
-# Define relavant file names and paths.
-measurementSet = f'{obsid}.ms'
+tilesFile = 'data/bad_tiles.csv'
 
 flags = ''
 
-# Many antennae issues in this range, for now don't process, will look into including later.
-if (obsid >= 1272277982) and (obsid <= 1272286862):
-    print('Major Antennae Error')
-    report.updateObs(reportCsv, obsid, 'flagged', 'Major Antennae Error')
-    report.updateObs(reportCsv, obsid, 'status', 'Failed')
-    exit(-1)
+# Convert from GPS time (obsid) to ISO and return the date as a stribg,
+def convGPS(timeGPS):
+    timeGPS = Time(timeGPS, format='gps')
+    timeUTC = Time(timeGPS, format='iso', scale='utc')
+    dateStr = str(timeUTC.datetime.date())
+    return dateStr
 
-if (obsid >= 1272450752) and (obsid <= 1272546032):
-    flags = '85'
+def findBadTiles(obsid, projectDir):
+    print('Finding Bad Tiles')
+    tileCsv = os.path.join(projectDir, tilesFile)
+    badTilesStr = ''
 
-if (obsid >= 1272623552) and (obsid <= 1272805232):
-    flags = '35 36 85'
+    if not os.path.exists(tileCsv):
+        print(f'No tile datafile found: {tileCsv}')
+        return badTilesStr
+    
+    tileDF = pd.read_csv(tileCsv, dtype=str)
+    tileDF.set_index('date', inplace=True)
 
-if (obsid >= 1272882752) and (obsid <= 1272888872):
-    flags = '35 36'
+    day = convGPS(obsid)
+    if day in tileDF.index:
+        badTilesStr = tileDF.at[day, 'tiles']
+    
+    return badTilesStr
 
-if (obsid >= 1273833152) and (obsid <= 1274441462):
-    flags = '47 48 49 50 51 52 53 54'
+def flagNight(obsid, projectDir, badTiles):
+    print('Flagging Night')
+    #badTiles = set(badTiles.split(' '))
+    tileCsv = os.path.join(projectDir, tilesFile)
+    if not os.path.exists(tileCsv):
+        tileDF = pd.DataFrame(columns=['date', 'tiles'])
+    else:
+         tileDF = pd.read_csv(tileCsv, dtype=str)
+    tileDF.set_index('date', inplace=True)
 
-if (obsid >= 1274869982) and (obsid <= 1275303662):
-    flags = '50 108'
+    day = convGPS(obsid)
+    if day in tileDF.index:
+        existingTiles = set(tileDF.at[day, 'tiles'].split())    
+        badTiles = badTiles.union(existingTiles)
+    
+    badTilesStr = ' '.join(map(str, badTiles))
+    tileDF.at[day, 'tiles'] = badTilesStr
+    
+    print(f'Flagging Tiles for {day}: ' + tileDF.at[day, 'tiles'])
 
+    tileDF.to_csv(tileCsv)
+    
 
-if flags != '':
-    subprocess.run(f'flagantennae {measurementSet} {flags}', shell=True, check=True)
-
-report.updateObs(reportCsv, obsid, 'flagged', flags)

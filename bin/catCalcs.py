@@ -15,7 +15,7 @@ def calcA(matchedCatFile, freq):
         matchedCat = pd.DataFrame(np.array(obsHdu[1].data).byteswap().newbyteorder())
     matchedCat.sort_values('flux', ascending=False, inplace=True)
 
-    matchedCat['gleam_flux'] = matchedCat['S_200'] * (np.float(freq) / 200.0) ** matchedCat['alpha']
+    matchedCat['gleam_flux'] = matchedCat['S_200'] * (float(freq) / 200.0) ** matchedCat['alpha']
     matchedCat['flux_ratio'] = matchedCat['flux'] / matchedCat['gleam_flux']
 
     A = matchedCat['flux_ratio'].mean()
