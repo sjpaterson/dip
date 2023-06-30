@@ -12,6 +12,7 @@ process generateLists {
 }
 
 process mosaic {
+  label 'gleamx'
   // publishDir params.mosaicdir, mode: 'copy', overwrite: true
 
   // Request a larger amount of storage on /nvmetmp.
@@ -37,6 +38,7 @@ process mosaic {
 }
 
 process measureRMS {
+  label 'gleamx'
   input:
     path imagelist
     path weightlist
@@ -57,6 +59,7 @@ process measureRMS {
 }
 
 process generateCatalogue {
+  label 'gleamx'
   publishDir params.mosaicdir, mode: 'copy', overwrite: true
 
   input:

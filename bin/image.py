@@ -64,7 +64,6 @@ cleanCmd = f'''wsclean \
     -link-polarizations xx,yy \
     -join-channels \
     -channels-out {chans} \
-    -fit-spectral-pol 2 \
     -data-column DATA \
     {measurementSet}'''
 

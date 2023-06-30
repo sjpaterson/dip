@@ -125,7 +125,7 @@ if len(badTiles) > 0:
     # Flag the bad tiles for this observation.
     badTilesStr = ' '.join(map(str, badTiles))
     subprocess.run(f'flagantennae {measurementSet} {badTilesStr}', shell=True, check=True)
-    report.updateObs(reportCsv, obsid, 'flagged2', badTilesStr)
+    report.updateObs(reportCsv, obsid, 'flagged', badTilesStr)
 
     # Recalibrate
     calibrate(measurementSet, solution)
