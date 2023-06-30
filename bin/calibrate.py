@@ -29,7 +29,7 @@ reportCsv = sys.argv[3]
 
 # Define relavant file names and paths.
 metafits = obsid + '.metafits'
-catGGSM = os.path.join(projectdir, 'models/GGSM.fits')
+catGGSM = os.path.join(projectdir, 'models/GGSM_updated.fits')
 catCropped = obsid + '_cropped_catalogue.fits'
 calibrationModel = obsid + '_local_gleam_model.txt'
 measurementSet = obsid + '.ms'
