@@ -122,7 +122,7 @@ with fits.open(obsFiles['yy']) as obsHdu:
     obsHdu.writeto(obsFiles['yy_pb'])
 
 
-# # Find sources on each polization.
+# Find sources for each polization.
 subprocess.run('aegean --autoload --table="' + obsFiles['xx_pb'] + '" "' + obsFiles['xx_pb'] + '"', shell=True, check=True)
 subprocess.run('aegean --autoload --table="' + obsFiles['yy_pb'] + '" "' + obsFiles['yy_pb'] + '"', shell=True, check=True)
 subprocess.run('match_catalogues "' + obsFiles['xx_pb_cat'] + '" "' + FLUX_MODEL_CATALOGUE + '" --separation "' + str(separation) + '" --exclusion_zone "' + str(exclusion) + '" --outname "' + obsFiles['xx_xm'] + '" --threshold 0.5 --nmax 1000 --coords ' + str(metadata['RA']) + ' ' + str(metadata['DEC']) + ' --radius "' + str(radius) + '" --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)

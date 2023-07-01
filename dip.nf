@@ -79,10 +79,10 @@ process postImage {
     each subchan
   output:
     // Only output the final images. If the interim files are required, uncomment the publish option in the image process.
-    path "${obsid}/*_deep-*-image-pb_warp.fits"
-    path "${obsid}/*_deep-*-image-pb_warp_comp.fits"
-    path "${obsid}/*_deep-*-image-pb_warp_rms.fits"
-    path "${obsid}/*_deep-*-image-pb_warp_bkg.fits"
+    path "${obsid}/*_deep-*-image-*_warp.fits"
+    path "${obsid}/*_deep-*-image-*_comp.fits"
+    path "${obsid}/*_deep-*-image-*_rms.fits"
+    path "${obsid}/*_deep-*-image-*_bkg.fits"
     path "${obsid}/*weight*.fits"
     path "${obsid}/*_transient.hdf5"
 
