@@ -118,21 +118,25 @@ plotFilename = solutionRef[:-4]
 ao = aocal.fromfile(solutionRef)
 badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
 
+# Report all tiles flagged.
+badTilesStr = ' '.join(map(str, badTiles))
+allBadTiles = f'{badTilesStr} {knownBadTiles}'
+report.updateObs(reportCsv, obsid, 'flagged', allBadTiles.strip())
+
 # Flag any bad tiles detected.
 if len(badTiles) > 0:
     # Flag the tiles for the rest of the night.
     flagTiles.flagNight(obsid, projectdir, badTiles)
     # Flag the bad tiles for this observation.
-    badTilesStr = ' '.join(map(str, badTiles))
     subprocess.run(f'flagantennae {measurementSet} {badTilesStr}', shell=True, check=True)
-    report.updateObs(reportCsv, obsid, 'flagged', badTilesStr)
-
+    
     # Recalibrate
     calibrate(measurementSet, solution)
     aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=measurementSet)
     plotFilename = solutionRef[:-4] + '_recal'
     ao = aocal.fromfile(solutionRef)
     badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
+
 
 # Test to see if the calibration solution meets minimum quality control. This is a simple check based on the number of flagged solutions.
 if not checkSolutions.check_solutions(aofile=solutionRef):

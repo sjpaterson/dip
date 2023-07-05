@@ -34,7 +34,7 @@ def findBadTiles(obsid, projectDir):
 
 def flagNight(obsid, projectDir, badTiles):
     print('Flagging Night')
-    #badTiles = set(badTiles.split(' '))
+    
     tileCsv = os.path.join(projectDir, tilesFile)
     if not os.path.exists(tileCsv):
         tileDF = pd.DataFrame(columns=['date', 'tiles'])

@@ -48,7 +48,7 @@ process calibrate {
 
 process image {
   // If you need the entire image output for debugging or assessing the observations, uncomment the below.
-  // publishDir params.obsdir, mode: 'copy', overwrite: true
+  publishDir params.obsdir, mode: 'copy', overwrite: true
 
   // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
   time { 360.minutes * task.attempt }
@@ -84,7 +84,6 @@ process postImage {
     path "${obsid}/*_deep-*-image-*_rms.fits"
     path "${obsid}/*_deep-*-image-*_bkg.fits"
     path "${obsid}/*weight*.fits"
-    path "${obsid}/*_transient.hdf5"
 
     """
     cd $obsid
