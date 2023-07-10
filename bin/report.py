@@ -4,7 +4,7 @@ import time
 import fcntl
 import pandas as pd
 
-def updateObs(reportFile, obsid, action, val):
+def updateObs(reportFile, obsid, action, val, quiet=False):
     obsid = str(obsid)
 
     # Create a lock file in the same directory as the report.
@@ -12,7 +12,8 @@ def updateObs(reportFile, obsid, action, val):
 
     # Attempt to obtain exclusive access to the report every 5 seconds for 10 minutes.
     reportUpdated = False
-    print('Updating Report.\nObsID: ' + str(obsid) + ' - Action: ' + str(action) + ' - Value: ' + str(val))
+    if not quiet:
+        print('Updating Report.\nObsID: ' + str(obsid) + ' - Action: ' + str(action) + ' - Value: ' + str(val))
     for i in range(120):
         try:
             with open(lockFile, 'w') as filelock:
