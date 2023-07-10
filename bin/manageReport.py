@@ -78,6 +78,11 @@ if action == 'create':
             report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set')
             continue
 
+        # Check the measurement set if the FLAG_CMD table is present.
+        if not os.path.exists(os.path.join(msPath, 'FLAG_CMD/table.dat')):
+            report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.')
+            continue
+
         # Is the folder or symlink already exists, delete and recreate.
         if os.path.exists(obsPath):
             if os.path.isdir(obsPath) and not os.path.islink(obsPath):
@@ -110,7 +115,7 @@ if action == 'verify' or action == 'status':
     apiKey = os.getenv('MWA_ASVO_API_KEY')
     # If the API key is set, check if any new downloads have been completed.
     if apiKey != None:
-        print('Downloading AVSO Job Information.')
+        print('Downloading ASVO Job Information.')
         session = Session.login('1', 'asvo.mwatelescope.org', '443', apiKey)
         jobList = session.get_jobs()
 
@@ -180,9 +185,9 @@ if action == 'status':
 
     print(f'DIP Status: {reportCsv}\n')
     print(f'Total Observations: {totalObs}')
-    print(f'AVSO Jobs Requiring Download: {jobsNotDownloaded}')
-    print(f'AVSO Jobs Submitted: {jobsSubmitted}')
-    print(f'AVSO Jobs Downloaded: {jobsDownloaded}')
+    print(f'ASVO Jobs Requiring Download: {jobsNotDownloaded}')
+    print(f'ASVO Jobs Submitted: {jobsSubmitted}')
+    print(f'ASVO Jobs Downloaded: {jobsDownloaded}')
     print(f'Observations Processed: {obsProcessed}')
     print(f'Observations Queued: {obsQueued}')
     print(f'Observations Failed: {obsFailed}')
