@@ -43,6 +43,26 @@ if reportCsv == '' or obsDir == '':
     print('Error: Unable to find the data entries in the nextflow.config.')
     exit()
 
+
+# Verify the download data is there, return True if it is, False if it is missing.
+def verifyDownload(obsid, jobid):
+    asvoObsPath = os.path.join(asvoPath, str(jobid))
+    msPath = os.path.join(asvoObsPath, str(obsid) + '.ms')
+    # Check the measurement set in the ASVO path is there, if not flag to redownload when possible.
+    if not os.path.exists(msPath):
+        report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set')
+        report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
+        return False
+
+    # Check the measurement set if the FLAG_CMD table is present, if not flag to redownload when possible.
+    if not os.path.exists(os.path.join(msPath, 'FLAG_CMD/table.dat')):
+        report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.')
+        report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
+        return False
+    
+    return True
+
+
 print('Report: ' + reportCsv)
 print('Observation Directory: ' + obsDir)
 
@@ -63,6 +83,7 @@ if action == 'create':
     reportDF = reportDF[reportDF['status'] != 'Success']
     reportDF = reportDF[reportDF['status'] != 'Failed']
     reportDF = reportDF[reportDF['jobid'] != '']
+    reportDF = reportDF[reportDF['job_status'] == 'Downloaded']
  
 
     # Create a maximum of 120 symlinks but still run through the entire operation to ensure old symlinks,
@@ -73,14 +94,22 @@ if action == 'create':
         msPath = os.path.join(asvoObsPath, str(obsid) + '.ms')
         obsPath = os.path.join(obsDir, str(obsid))
 
-        # Check the measurement set in the ASVO path is there.
-        if not os.path.exists(msPath):
-            report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set')
-            continue
+        report.updateObs(reportCsv, obsid, 'status', '')
 
-        # Check the measurement set if the FLAG_CMD table is present.
-        if not os.path.exists(os.path.join(msPath, 'FLAG_CMD/table.dat')):
-            report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.')
+        # Check the measurement set in the ASVO path is there, if not flag to redownload when possible.
+        # if not os.path.exists(msPath):
+        #     report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set')
+        #     report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
+        #     continue
+
+        # # Check the measurement set if the FLAG_CMD table is present, if not flag to redownload when possible.
+        # if not os.path.exists(os.path.join(msPath, 'FLAG_CMD/table.dat')):
+        #     report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.')
+        #     report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
+        #     continue
+
+        # If the measurement set data is not there or incomplete, skip.
+        if not verifyDownload(obsid, reportDF.at[obsid, 'jobid']):
             continue
 
         # Is the folder or symlink already exists, delete and recreate.
@@ -97,6 +126,9 @@ if action == 'create':
             os.symlink(asvoObsPath, obsPath)
             report.updateObs(reportCsv, obsid, 'status', 'Initiated')
             count = count + 1
+
+        if int(reportDF.at[obsid, 'attempts']) >= 3:
+            report.updateObs(reportCsv, obsid, 'status', 'Failed')
 
     print('Created ' + str(count) + ' symlinks.')
 
@@ -130,8 +162,10 @@ if action == 'verify' or action == 'status':
                 if jobState == 1:
                     report.updateObs(reportCsv, obsID, 'job_status', 'Processing', quiet=quietMode)
                 if jobState == 2:
-                    report.updateObs(reportCsv, obsID, 'job_status', 'Downloaded', quiet=quietMode)
-
+                    # Ensure the mesaurement set data is there and complete and mark as downloaded if it is.
+                    if verifyDownload(obsID, jobID):
+                        report.updateObs(reportCsv, obsID, 'job_status', 'Downloaded', quiet=quietMode)
+    
 
     # Filter the reportDF to remove any bad observations.
     reportDF = reportDF[reportDF['calibration'] == 'Success']
@@ -143,7 +177,7 @@ if action == 'verify' or action == 'status':
     reportDF = reportDF[reportDF['postImage_MFS'] == 'Success']
     reportDF = reportDF[reportDF['status'] != 'Success']
 
-    if action == 'verify':
+    if not quietMode:
         print('Validating ' + str(len(reportDF.index)) + ' observations.')
 
     count = 0
@@ -163,7 +197,7 @@ if action == 'verify' or action == 'status':
         else:
             report.updateObs(reportCsv, obsid, 'status', 'Missing Data', quiet=quietMode)
 
-    if action == 'verify':
+    if not quietMode:
         print('Found ' + str(count) + ' errors.')
 
 
@@ -173,10 +207,13 @@ if action == 'status':
 
     # Count of: Total observations, jobs needing to be downloaded, submitted/queued/processing jobs, completed jobs, obs processed, obs queued/running, obs failed, obs successful.
     totalObs = len(reportDF.index)
+
     jobsNotDownloaded = len(reportDF[pd.isnull(reportDF['jobid'])].index)
-    jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != 'Downloaded')].index)
+    jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != 'Downloaded') & (reportDF['job_status'] != 'Missing Data')].index)
+    jobsErrors = len(reportDF[reportDF['job_status'] == 'Missing Data'].index)
     jobsDownloaded = len(reportDF[reportDF['job_status'] == 'Downloaded'].index)
     obsProcessed = len(reportDF[pd.notnull(reportDF['status'])].index)
+
     obsQueued = len(reportDF[reportDF['status'] == 'Queued'].index)
     obsFailed = len(reportDF[reportDF['status'] == 'Failed'].index)
     obsMissing = len(reportDF[reportDF['status'] == 'Missing Data'].index)
@@ -184,10 +221,13 @@ if action == 'status':
     obsSuccess = len(reportDF[reportDF['status'] == 'Success'].index)
 
     print(f'DIP Status: {reportCsv}\n')
-    print(f'Total Observations: {totalObs}')
+    print(f'Total Observations: {totalObs}\n')
+
     print(f'ASVO Jobs Requiring Download: {jobsNotDownloaded}')
-    print(f'ASVO Jobs Submitted: {jobsSubmitted}')
-    print(f'ASVO Jobs Downloaded: {jobsDownloaded}')
+    print(f'ASVO Jobs Queued: {jobsSubmitted}')
+    print(f'ASVO Jobs Download Errors: {jobsErrors}')
+    print(f'ASVO Jobs Downloaded Successfully: {jobsDownloaded}\n')
+
     print(f'Observations Processed: {obsProcessed}')
     print(f'Observations Queued: {obsQueued}')
     print(f'Observations Failed: {obsFailed}')
@@ -204,12 +244,18 @@ if action == 'download':
 
     session = Session.login('1', 'asvo.mwatelescope.org', '443', apiKey)
     jobList = session.get_jobs()
+
+    # Create a list of Obs IDs with jobs currently submitted.
+    obsIDList = []
+    for job in jobList:
+        obsIDList.append(job['row']['job_params']['obs_id'])
+
     print('Loading ' + reportCsv)
     reportDF = pd.read_csv(reportCsv, dtype=str)
     reportDF.set_index('obsid', inplace=True)
 
     # Check how many observations are currently being downloaded.
-    jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != 'Downloaded')].index)
+    jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != 'Downloaded') & (reportDF['job_status'] != 'Missing Data')].index)
     maxObs = numberObs
     numberObs = numberObs - jobsSubmitted
 
@@ -219,7 +265,7 @@ if action == 'download':
         exit()
 
     # Filter for only obs left to download.
-    reportDF = reportDF[pd.isnull(reportDF['jobid'])]
+    reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == 'Missing Data')]
     print(f'Total observations left to download: {len(reportDF.index)}')
     print(f'Queueing a total of {numberObs} observations.')
 
@@ -232,6 +278,10 @@ if action == 'download':
 
     count = 0
     for obsID, row in reportDF.iterrows():
+        # Check if a job already exists for the Obs ID, if so skip it.
+        if obsID in obsIDList:
+            continue
+
         params['obs_id'] = obsID
         # Submit job.
         try:
@@ -244,7 +294,7 @@ if action == 'download':
         except:
             print(f'Failled to submit {obsID}.')
 
-        # If maximum jobs has been reached, break.
+        # If the maximum number of jobs have been reached, break.
         if count >= numberObs:
             break
 
