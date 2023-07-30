@@ -9,6 +9,7 @@ import report
 import catCalcs
 import subprocess
 import astropy.units as u
+import measureRatio as mRatio
 import gleamx.mask_image as mask_image
 import gleamx.generate_weight_map as gwm
 from astropy.io import fits
@@ -180,20 +181,21 @@ subprocess.run('match_catalogues "' + obsFiles['ipb_cat_corrected'] + '" "' + FL
 subprocess.run('flux_warp "' + obsFiles['xm'] + '" "' + obsFiles['ipb_warp'] + '" --mode rbf --freq "' + str(metadata['FREQCENT']) + '" --threshold 0.5 --nmax 400 --flux_key "flux" --smooth 5.0 --ignore_magellanic --localrms_key "local_rms" --add-to-header --ra_key "RAJ2000" --dec_key "DEJ2000" --index "alpha" --curvature "beta" --ref_flux_key "S_200" --ref_freq 200.0 --alpha -0.77 --plot --cmap "gnuplot2" --order 2 --ext png --nolatex', shell=True, check=True)
     
 # Get the header info from the flux warped image.
-with fits.open(obsFiles['ipb_warp']) as warpHdu:
-    warpHead = warpHdu[0].header
-    factor = warpHead['BSCALE']
+#with fits.open(obsFiles['ipb_warp']) as warpHdu:
+#    warpHead = warpHdu[0].header
+#    factor = warpHead['BSCALE']
 
 
 # The RMS and BKG maps will not have changed much from the ionospheric warping, therefore rename them and update BSCALE.
 os.rename(obsFiles['ipb_rms'], obsFiles['ipb_warp_rms'])
 os.rename(obsFiles['ipb_bkg'], obsFiles['ipb_warp_bkg'])
-fits.setval(obsFiles['ipb_warp_rms'], 'BSCALE', value=factor)
-fits.setval(obsFiles['ipb_warp_bkg'], 'BSCALE', value=factor)
+#fits.setval(obsFiles['ipb_warp_rms'], 'BSCALE', value=factor)
+#fits.setval(obsFiles['ipb_warp_bkg'], 'BSCALE', value=factor)
 
 
 # Rerun the source finding on the flux warped image.
 subprocess.run('aegean --autoload --table="' + obsFiles['ipb_warp'] + '" "' + obsFiles['ipb_warp'] + '"', shell=True, check=True)
+
 
 # Generate a weight map for mosaicking.
 #subprocess.run('lookup_beam.py ' + obsFiles['ipb_warp'] + ' ' + filePrefix + '-image-pb_warp- -c ' + chans[chanStart] + '-' + chans[chanEnd] + ' --beam_path "' + os.path.join(projectdir, 'beamdata/gleam_xx_yy.hdf5') + '"', shell=True, check=True)
@@ -205,6 +207,10 @@ with fits.open(obsFiles['ipb_warp_cat']) as catHdu:
     cat = catHdu[1].data
     nsrc = len(cat)
 report.updateObs(reportCsv, obsid, 'sourcecount_' + subchan, str(nsrc))
+
+if subchan == 'MFS':
+    ratio = mRatio.measureRatio(obsFiles['ipb_warp_cat'], projectdir)
+    report.updateObs(reportCsv, obsid, 'ratio', ratio)
 
 # Calculate the thermal RMS at the center of the observation.
 obsRms = rms.calcRMS(obsFiles['ipb_warp_rms'])

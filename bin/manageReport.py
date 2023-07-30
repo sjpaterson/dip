@@ -5,6 +5,7 @@ import sys
 import shutil
 import pandas as pd
 import report
+import subprocess
 from mantaray.api import Session
 
 
@@ -45,19 +46,19 @@ if reportCsv == '' or obsDir == '':
 
 
 # Verify the download data is there, return True if it is, False if it is missing.
-def verifyDownload(obsid, jobid):
+def verifyDownload(obsid, jobid, quietMode=False):
     asvoObsPath = os.path.join(asvoPath, str(jobid))
     msPath = os.path.join(asvoObsPath, str(obsid) + '.ms')
     # Check the measurement set in the ASVO path is there, if not flag to redownload when possible.
     if not os.path.exists(msPath):
-        report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set')
-        report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
+        report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set', quiet=quietMode)
+        report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data', quiet=quietMode)
         return False
 
     # Check the measurement set if the FLAG_CMD table is present, if not flag to redownload when possible.
     if not os.path.exists(os.path.join(msPath, 'FLAG_CMD/table.dat')):
-        report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.')
-        report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
+        report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.', quiet=quietMode)
+        report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data', quiet=quietMode)
         return False
     
     return True
@@ -81,7 +82,7 @@ if action == 'create':
     # Filter the reportDF to remove any bad observations.
     reportDF.dropna(subset=['jobid'], inplace=True)
     reportDF = reportDF[reportDF['status'] != 'Success']
-    reportDF = reportDF[reportDF['status'] != 'Failed']
+    #reportDF = reportDF[reportDF['status'] != 'Failed']
     reportDF = reportDF[reportDF['jobid'] != '']
     reportDF = reportDF[reportDF['job_status'] == 'Downloaded']
  
@@ -94,30 +95,22 @@ if action == 'create':
         msPath = os.path.join(asvoObsPath, str(obsid) + '.ms')
         obsPath = os.path.join(obsDir, str(obsid))
 
-        report.updateObs(reportCsv, obsid, 'status', '')
-
-        # Check the measurement set in the ASVO path is there, if not flag to redownload when possible.
-        # if not os.path.exists(msPath):
-        #     report.updateObs(reportCsv, obsid, 'status', 'Error - Missing Measurement Set')
-        #     report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
-        #     continue
-
-        # # Check the measurement set if the FLAG_CMD table is present, if not flag to redownload when possible.
-        # if not os.path.exists(os.path.join(msPath, 'FLAG_CMD/table.dat')):
-        #     report.updateObs(reportCsv, obsid, 'status', 'Error - Missing FLAG_CMD Table.')
-        #     report.updateObs(reportCsv, obsid, 'job_status', 'Missing Data')
-        #     continue
-
-        # If the measurement set data is not there or incomplete, skip.
-        if not verifyDownload(obsid, reportDF.at[obsid, 'jobid']):
-            continue
-
         # Is the folder or symlink already exists, delete and recreate.
         if os.path.exists(obsPath):
             if os.path.isdir(obsPath) and not os.path.islink(obsPath):
                 shutil.rmtree(obsPath)
             if os.path.islink(obsPath):
                 os.unlink(obsPath)
+
+        # If the measurement set data is not there or incomplete, skip.
+        if verifyDownload(obsid, reportDF.at[obsid, 'jobid']) == False:
+            continue
+
+        # If it is a failed observation, skip.
+        if row['status'] == 'Failed':
+            continue
+
+        report.updateObs(reportCsv, obsid, 'status', '')
 
         # IF attempt field is empty, treat it as 0.
         reportDF['attempts'] = reportDF['attempts'].fillna(0)
@@ -163,8 +156,11 @@ if action == 'verify' or action == 'status':
                     report.updateObs(reportCsv, obsID, 'job_status', 'Processing', quiet=quietMode)
                 if jobState == 2:
                     # Ensure the mesaurement set data is there and complete and mark as downloaded if it is.
-                    if verifyDownload(obsID, jobID):
-                        report.updateObs(reportCsv, obsID, 'job_status', 'Downloaded', quiet=quietMode)
+                    if reportDF.at[obsID, 'job_status'] != 'Downloaded':
+                        if verifyDownload(obsID, jobID, quietMode) == True:
+                            report.updateObs(reportCsv, obsID, 'job_status', 'Downloaded', quiet=quietMode)
+                        else:
+                            report.updateObs(reportCsv, obsID, 'job_status', 'Download Error', quiet=quietMode)
     
 
     # Filter the reportDF to remove any bad observations.

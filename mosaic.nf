@@ -33,7 +33,7 @@ process mosaic {
     path "swarp.xml"
 
     """
-    swarp -c "$projectDir/swarp.config" @"$imagelist"
+    swarp -c "$projectDir/swarp_coadd.config" @"$imagelist"
     """
 }
 

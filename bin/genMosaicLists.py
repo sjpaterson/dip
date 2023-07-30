@@ -25,6 +25,7 @@ report = report[report['status'] == 'Success']
 report = report[report['coord_rms_MFS'] < 0.02]
 report['sourcecount_MFS'] = pd.to_numeric(report['sourcecount_MFS'], errors='coerce')
 report = report[report['sourcecount_MFS'] > 3000]
+report = report[report['ratio'] > 0.8]
 #report = report[report['dist_point_cent'] < 10]
 
 if mode == 'beam':
@@ -40,7 +41,8 @@ if mode == 'beam':
 
     for obsid, row in report.iterrows():
         fileObs.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits\n')
-        beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits'
+        #beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-MFS-image-pb_warp.fits'
+        beamCsv.at[obsid, 'obspath'] = row['obsDir'] + '/' + str(obsid)
 
     fileObs.close()
     beamCsv.to_csv('beaminfo.csv', index=True)
@@ -54,10 +56,12 @@ if mode == 'swarp':
     fileWeight = open('weightlist', 'w')
 
     for obsid, row in report.iterrows():
-        obsFile = mosaicObsDir + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.fits'
+        #obsFile = mosaicObsDir + '/' + str(obsid) + '_deep-MFS-image-pb_warp.sm.resamp.fits'
+        obsFile = f'{mosaicObsDir}/{obsid}_deep-MFS-image-pb_warp.sm.resamp.fits'
         if os.path.exists(obsFile):
-            fileImage.write(obsFile + '\n')
-            fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
+            fileImage.write(f'{obsFile}\n')
+            #fileWeight.write(row['obsDir'] + '/' + str(obsid) + '/' + str(obsid)  + '_deep-MFS-image-pb_warp_weight.fits\n')
+            fileWeight.write(f'{mosaicObsDir}/{obsid}_deep-MFS-image-pb_warp.sm.resamp.weight.fits\n')
 
     fileImage.close()
     fileWeight.close()

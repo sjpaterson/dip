@@ -88,6 +88,13 @@ metaHdu.close()
 knownBadTiles = flagTiles.findBadTiles(obsid, projectdir)
 if len(knownBadTiles) > 0:
     subprocess.run(f'flagantennae {measurementSet} {knownBadTiles}', shell=True, check=True)
+    report.updateObs(reportCsv, obsid, 'flagged', knownBadTiles)
+
+# If more than 50 bad tiles, fail the processing,
+if knownBadTiles.count(' ') >= 49:
+    report.updateObs(reportCsv, obsid, 'calibration', 'Fail - Too Many Bad Tiles.')
+    report.updateObs(reportCsv, obsid, 'status', 'Failed')
+    exit(-1)
 
 
 # Crop the GGSM catalogue to the 250 brightest sources near the pointing location and bulld the calibration model from them.
@@ -102,7 +109,7 @@ calibrate(measurementSet, solution, ts)
 #aocal_plot(solution, refant)
 plotFilename = solution[:-4]
 ao = aocal.fromfile(solution)
-aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2, testTiles=False)
+aocal_plot.plot(ao, plotFilename, refant=refant, amp_max=2, testTiles=False)
 aocal_diff.run(solution, obsid, metafits=metafits, refant=refant)
 
 
@@ -116,7 +123,7 @@ aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, 
 #aocal_plot(solutionRef, refant)
 plotFilename = solutionRef[:-4]
 ao = aocal.fromfile(solutionRef)
-badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
+badTiles = aocal_plot.plot(ao, plotFilename, refant=refant, amp_max=2)
 
 # Report all tiles flagged.
 badTilesStr = ' '.join(map(str, badTiles))
@@ -135,7 +142,7 @@ if len(badTiles) > 0:
     aocal_phaseref.run(solution, solutionRef, refant, xy=-2.806338586067941065e+01, dxy=-4.426533296449057023e-07, ms=measurementSet)
     plotFilename = solutionRef[:-4] + '_recal'
     ao = aocal.fromfile(solutionRef)
-    badTiles = aocal_plot.plot(ao, plotFilename, refant=127, amp_max=2)
+    badTiles = aocal_plot.plot(ao, plotFilename, refant=refant, amp_max=2)
 
 
 # Test to see if the calibration solution meets minimum quality control. This is a simple check based on the number of flagged solutions.
