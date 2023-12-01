@@ -23,7 +23,6 @@ process checkBeamData{
 process startObsProcessing {
   input:
     path obsid
-    // val ready
   output:
     path obsid
 
@@ -83,7 +82,14 @@ process postImage {
     path "${obsid}/*_deep-*-image-*_comp.fits"
     path "${obsid}/*_deep-*-image-*_rms.fits"
     path "${obsid}/*_deep-*-image-*_bkg.fits"
+    path "${obsid}/*_deep-*-image-*_cf.fits"
+    path "${obsid}/*_deep-*-image-*_scaled.fits"
+    path "${obsid}/*-beam.fits"
+    path "${obsid}/*_xm.fits"
     path "${obsid}/*weight*.fits"
+    path "${obsid}/matched_*.csv"
+    path "${obsid}/acalc_*.txt"
+    path "${obsid}/*.png"
 
     """
     cd $obsid

@@ -1,7 +1,9 @@
 import os
 import math
-import subprocess
+import numpy as np
 from astropy.io import fits
+from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
 
 def calcBeamSize(psfFile):
     # Import the PSF header to read the BMAJ and BMIN for the restoring beam.
@@ -28,3 +30,20 @@ def applyPB(obsid, subchan, pol, beam):
     obsHdu.writeto(outFits)
     obsHdu.close()
 
+# Calculate the location of the beam centre either from the beam.fits or weight.fits.
+def calcBeamCentre(beamFile):
+    if not os.path.exists(beamFile):
+        print(f'Error, {beamFile} does not exist.')
+        exit()
+
+    obsFits = fits.open(beamFile)
+    obsWCS = WCS(obsFits[0].header).celestial
+    obsImage = obsFits[0].data
+    obsFits.close()
+    if obsImage.ndim > 2:
+        obsImage = obsImage[0,0,:,:]
+
+    centPos = np.unravel_index(np.argmax(obsImage), obsImage.shape)    
+    centreBeam = SkyCoord.from_pixel(centPos[1], centPos[0], obsWCS)
+    
+    return centreBeam
