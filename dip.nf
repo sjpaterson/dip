@@ -1,25 +1,10 @@
 // Deep Image Pipeline
 nextflow.enable.dsl=2
 
-process checkBeamData{
-  output:
-    val 'completed'
-  """
-  #! /bin/bash -l
 
-  if [[ ! -d "$projectDir/beamdata" ]]
-    then
-        mkdir "$projectDir/beamdata"
-        wget -P "$projectDir/beamdata" http://cerberus.mwa128t.org/mwa_full_embedded_element_pattern.h5
-        wget -O pb_lookup.tar.gz https://cloudstor.aarnet.edu.au/plus/s/77FRhCpXFqiTq1H/download
-        tar -xzvf pb_lookup.tar.gz -C "$projectDir/beamdata"
-  fi
-  """
-}
-
-// A secondary check to ensure the directory is a synbolic link (observation has not been processed).
-// If it isn't then it has been processed, therefore exit with error.
-// Else continue and clear the report entry.
+// Update the report to ensure the entry for the obsid is clear.
+// Perform a secondary check to ensure the directory is a synbolic link (observation has not been processed).
+// If it isn't, then it has been processed and therefore exit with error.
 process startObsProcessing {
   input:
     path obsid
@@ -31,6 +16,7 @@ process startObsProcessing {
     """
 }
 
+// Calibrate the obsid flagging bad tiles.
 process calibrate {
   input:
     path obsid
@@ -45,14 +31,14 @@ process calibrate {
     """
 }
 
+// Perform the image processing with wsclean.
 process image {
-  // If you need the entire image output for debugging or assessing the observations, uncomment the below.
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
-  // Set SLURM job time limit to 150 minutes, increase it by 200 minutes each time it times out for a maximum of 3 retries.
+  // Set SLURM job time limit to 360 minutes, increase it each time it times out for a maximum of 2 retries.
   time { 360.minutes * task.attempt }
   errorStrategy 'retry'
-  maxRetries 3
+  maxRetries 2
   memory '110G'
 
   input:
@@ -66,8 +52,8 @@ process image {
     """
 }
 
+// Join the linear polarisations and scale them to match GLEAM.
 process postImage {
-  label 'gleamx'
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
   time 3.hour
@@ -77,7 +63,7 @@ process postImage {
     path obsid
     each subchan
   output:
-    // Only output the final images. If the interim files are required, uncomment the publish option in the image process.
+    // Only output the new images and diagnostics created for the subchan processed.
     path "${obsid}/*_deep-*-image-*_warp.fits"
     path "${obsid}/*_deep-*-image-*_comp.fits"
     path "${obsid}/*_deep-*-image-*_rms.fits"
@@ -106,12 +92,8 @@ workflow {
   obsDirCh = Channel.fromPath(obsDirFull, type: 'dir').filter{java.nio.file.Files.isSymbolicLink(it)}
   subChans = Channel.of('0000', '0001', '0002', '0003', 'MFS')
 
-  // To move to the sbatch instead to not need to wait to spawn a new job
-  // Check to see if the beam data for mwa_pb_lookup exists. If not download it.
-  // checkBeamData()
   
-  // Process each observation in the specified observation directory.
-  //startObsProcessing(obsDirCh, checkBeamData.out)
+  // Process each observation (symlink) in the specified observation directory.
   startObsProcessing(obsDirCh)
   calibrate(startObsProcessing.out)
   image(calibrate.out)

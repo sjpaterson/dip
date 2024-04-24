@@ -37,11 +37,11 @@ obsFiles = dict(
     # Linear polarizations produced by WSCLEAN.
     xx = filePrefix + '-XX-image.fits',
     yy = filePrefix + '-YY-image.fits',
-    xx_rms = filePrefix + '-XX-image_rms.fits',
-    yy_rms = filePrefix + '-YY-image_rms.fits',
     # Linear polarizations with primary beam applied.
     xx_pb = filePrefix + '-XX-image-pb.fits',
     yy_pb = filePrefix + '-YY-image-pb.fits',
+    xx_pb_rms = filePrefix + '-XX-image-pb_rms.fits',
+    yy_pb_rms = filePrefix + '-YY-image-pb_rms.fits',
     # Stokes I conversion from linear polarizations with pb appleid.
     ipb = filePrefix + '-image-pb.fits',
     ipb_rms = filePrefix + '-image-pb_rms.fits',
@@ -113,19 +113,7 @@ if not os.path.exists(obsFiles['beam_xx']) or not os.path.exists(obsFiles['beam_
 beamCentXX = calcBeamCentre(obsFiles['beam_xx'])
 beamCentYY = calcBeamCentre(obsFiles['beam_yy'])
 
-# Calculate the RMS for each polarization.
-rmsEstXX = rms.estimateRMS(obsFiles['xx'])
-rmsEstYY = rms.estimateRMS(obsFiles['yy'])
-report.updateObs(reportCsv, obsid, 'rms_estimate_xx_' + subchan, rmsEstXX)
-report.updateObs(reportCsv, obsid, 'rms_estimate_yy_' + subchan, rmsEstYY)
-subprocess.run(f'BANE --cores 1 --compress --noclobber "{obsFiles["xx"]}"', shell=True, check=True)
-subprocess.run(f'BANE --cores 1 --compress --noclobber "{obsFiles["yy"]}"', shell=True, check=True)
-rmsXX = rms.calcRMSCoords(obsFiles['xx_rms'], beamCentXX.ra.deg, beamCentXX.dec.deg)
-rmsYY = rms.calcRMSCoords(obsFiles['yy_rms'], beamCentYY.ra.deg, beamCentYY.dec.deg)
-report.updateObs(reportCsv, obsid, 'rms_xx_' + subchan, rmsXX)
-report.updateObs(reportCsv, obsid, 'rms_yy_' + subchan, rmsYY)
-
-
+# Apply the primary beam to each polarization.
 with fits.open(obsFiles['beam_xx']) as beamXXHdu:
     beamXX = beamXXHdu[0].data
 
@@ -142,9 +130,18 @@ with fits.open(obsFiles['yy']) as obsHdu:
     obsHdu.writeto(obsFiles['yy_pb'])
 
 
+# Calculate the RMS for each pn corrected polarization.
+subprocess.run(f'BANE --cores 1 --compress "{obsFiles["xx_pb"]}"', shell=True, check=True)
+subprocess.run(f'BANE --cores 1 --compress "{obsFiles["yy_pb"]}"', shell=True, check=True)
+rmsXX = rms.calcRMSCoords(obsFiles['xx_pb_rms'], beamCentXX.ra.deg, beamCentXX.dec.deg)
+rmsYY = rms.calcRMSCoords(obsFiles['yy_pb_rms'], beamCentYY.ra.deg, beamCentYY.dec.deg)
+report.updateObs(reportCsv, obsid, 'rms_xx_' + subchan, rmsXX)
+report.updateObs(reportCsv, obsid, 'rms_yy_' + subchan, rmsYY)
+
+
 # Find sources for each polization.
-subprocess.run('aegean --autoload --table="' + obsFiles['xx_pb'] + '" "' + obsFiles['xx_pb'] + '"', shell=True, check=True)
-subprocess.run('aegean --autoload --table="' + obsFiles['yy_pb'] + '" "' + obsFiles['yy_pb'] + '"', shell=True, check=True)
+subprocess.run('aegean --cores=1 --autoload --table="' + obsFiles['xx_pb'] + '" "' + obsFiles['xx_pb'] + '"', shell=True, check=True)
+subprocess.run('aegean --cores=1 --autoload --table="' + obsFiles['yy_pb'] + '" "' + obsFiles['yy_pb'] + '"', shell=True, check=True)
 # Reduce the catalgoue to isolated sources, match)catalgoues exclusion_zone does not do a satiffacory job.
 catCalcs.reduceCat(obsFiles["xx_pb_cat"], obsFiles["xx_pb_reduced_cat"], distance=isolationDistance)
 catCalcs.reduceCat(obsFiles["yy_pb_cat"], obsFiles["yy_pb_reduced_cat"], distance=isolationDistance)
@@ -153,7 +150,7 @@ subprocess.run(f'match_catalogues "{obsFiles["xx_pb_reduced_cat"]}" "{FLUX_MODEL
 subprocess.run(f'match_catalogues "{obsFiles["yy_pb_reduced_cat"]}" "{FLUX_MODEL_CATALOGUE}" --separation "{separation}" --exclusion_zone "{exclusion}" --outname "{obsFiles["yy_xm"]}" --threshold 0.5 --nmax 1000 --coords {beamCentYY.ra.deg} {beamCentYY.dec.deg} --radius {radiusScaling} --ra2 "RAJ2000" --dec2 "DEJ2000" --ra1 "ra" --dec1 "dec" -F "int_flux" --eflux "err_int_flux" --localrms "local_rms"', shell=True, check=True)
 
 
-# Calculate the difference of the 20 brightest sources compared to GLEAM to prdouce the scaling factor A.
+# Calculate the weighted mean difference of sources compared to GLEAM to prdouce the scaling factor A.
 Axx = catCalcs.calcA(f'{obsid}_{subchan}_XX', obsFiles['xx_xm'], metadata['FREQCENT'])
 Ayy = catCalcs.calcA(f'{obsid}_{subchan}_YY', obsFiles['yy_xm'], metadata['FREQCENT'])
 
@@ -183,8 +180,8 @@ os.remove(obsFiles['ipb'])
 os.rename(obsFiles['ipb_mask'], obsFiles['ipb'])
 
 # Calculate RMS and detect sources on the image.
-subprocess.run('BANE --cores 1 --compress --noclobber "' + obsFiles['ipb'] + '"', shell=True, check=True)
-subprocess.run('aegean --autoload --table="' + obsFiles['ipb'] + '" "' + obsFiles['ipb'] + '"', shell=True, check=True)
+subprocess.run('BANE --cores 1 --compress "' + obsFiles['ipb'] + '"', shell=True, check=True)
+subprocess.run('aegean --cores=1 --autoload --table="' + obsFiles['ipb'] + '" "' + obsFiles['ipb'] + '"', shell=True, check=True)
 
 
 # Check that a sufficient number of sources were detected.
@@ -214,10 +211,10 @@ subprocess.run('flux_warp "' + obsFiles['xm'] + '" "' + obsFiles['ipb_warp'] + '
     
 
 # Calculate the RMS and BKG maps for the warped image.
-subprocess.run('BANE --cores 1 --compress --noclobber "' + obsFiles['ipb_warp_scaled'] + '"', shell=True, check=True)
+subprocess.run('BANE --cores 1 --compress "' + obsFiles['ipb_warp_scaled'] + '"', shell=True, check=True)
 
 # Rerun the source finding on the flux warped image.
-subprocess.run('aegean --autoload --table="' + obsFiles['ipb_warp_scaled'] + '" "' + obsFiles['ipb_warp_scaled'] + '"', shell=True, check=True)
+subprocess.run('aegean --cores=1 --autoload --table="' + obsFiles['ipb_warp_scaled'] + '" "' + obsFiles['ipb_warp_scaled'] + '"', shell=True, check=True)
 
 # Generate a weight map for mosaicking.
 gwm.genWeightMap(obsFiles['beam_xx'], obsFiles['beam_yy'], obsFiles['ipb_warp_scaled_rms'], obsFiles['ipb_warp_scaled_weight'])

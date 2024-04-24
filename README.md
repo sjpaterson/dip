@@ -29,11 +29,14 @@ The second is the GLEAM-X container, this is a temporary situation due to curren
 
  If not run on Pawsey or not using ASVO: Create symlinks to the observations you wish to process in your observations directory. It will process all symlinks in the directory so it is recommended to do it in batches suitable for your system.
 
+ Step One: Run download.sh
+ This is step uses minimum resources so can be run on the login node. A number of observations to request from the AVSO can be specified as an input, default is 120.
  
- Step One: Run dip.sbatch
+ Step Two: Run dip.sbatch
  This will need the be rerun until all observations have been processed.
  On success, DIP will replace the symlink with a folder containing the processed observation.
 
+ Once all observations have been completed, they can be mosaicked together with dip_mosaic available from [Future GitHub link].
  Step Two: Run mosaic.sbatch
 
  Complete! Your deep image should now be accessible in the deep image folder specified in your nextflow.config.

@@ -8,7 +8,8 @@ MirrorURL: http://ftp.us.debian.org/debian/
 %post
     apt-get update
     apt-get -y install python3 pip git wget
-    pip install numpy pandas astropy scipy matplotlib h5py wget --break-system-packages
+    Pip install numpy====1.23.5
+    pip install pandas astropy scipy matplotlib h5py wget --break-system-packages
     
     apt-get -y install \
     casacore-dev casacore-tools libgsl-dev libhdf5-dev \
@@ -55,7 +56,6 @@ MirrorURL: http://ftp.us.debian.org/debian/
 
 
     apt-get -y install gfortran libxml++2.6-dev
-    pip install racs-tools --break-system-packages
     pip install git+https://github.com/PaulHancock/Aegean.git --break-system-packages
 
     git clone https://github.com/tjgalvin/fits_warp.git
