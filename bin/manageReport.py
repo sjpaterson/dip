@@ -9,7 +9,7 @@ import subprocess
 from mantaray.api import Session
 
 
-asvoPath = '/astro/mwasci/asvo/'
+asvoPath = '/scratch/mwasci/asvo/'
 numberObs = 120
 
 if not (len(sys.argv) >= 2 and len(sys.argv) <= 4):
@@ -270,7 +270,7 @@ if action == 'download':
     params['avg_freq_res'] = '40'
     params['flag_edge_width'] = '80'
     params['output'] = 'ms'
-    params['delivery'] = 'astro'
+    params['delivery'] = 'scratch'
 
     count = 0
     for obsID, row in reportDF.iterrows():

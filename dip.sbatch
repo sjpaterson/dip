@@ -22,7 +22,7 @@ export NXF_ANSI_LOG=false
 
 # Check to ensure the beam data for mwa_pb_lookup exists. If not download it.
 # The beamdata is no longer located at this destination, please contact us if required until
-# a new how is created.
+# a new home is created.
 # if [[ ! -d "beamdata" ]]
 #     then
 #         mkdir "beamdata"
