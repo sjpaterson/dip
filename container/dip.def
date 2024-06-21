@@ -8,7 +8,7 @@ MirrorURL: http://ftp.us.debian.org/debian/
 %post
     apt-get update
     apt-get -y install python3 pip git wget
-    Pip install numpy====1.23.5
+    pip install numpy==1.23.5 --break-system-packages
     pip install pandas astropy scipy matplotlib h5py wget --break-system-packages
     
     apt-get -y install \
@@ -30,13 +30,14 @@ MirrorURL: http://ftp.us.debian.org/debian/
     cd /
     rm -rf EveryBeam
 
-    git clone https://git.astron.nl/RD/idg.git --recursive
-    cd idg && mkdir build && cd build
-    cmake -DCMAKE_INSTALL_PREFIX=/usr/local/idg/ ..
-    make
-    make install
-    cd /
-    rm -rf idg
+    # IDG not being used currently.
+    # git clone https://git.astron.nl/RD/idg.git --recursive
+    # cd idg && mkdir build && cd build
+    # cmake -DCMAKE_INSTALL_PREFIX=/usr/local/idg/ ..
+    # make
+    # make install
+    # cd /
+    # rm -rf idg
 
     git clone https://gitlab.com/aroffringa/wsclean.git
     cd wsclean
@@ -53,6 +54,13 @@ MirrorURL: http://ftp.us.debian.org/debian/
     python setup.py install
     cd /
     rm -rf mwa_pb_lookup
+
+    git clone https://github.com/ICRAR/manta-ray-client.git
+    cd manta-ray-client
+    pip3 install -r requirements.txt --break-system-packages
+    python3 setup.py install
+    cd /
+    rm -rf manta-ray-client
 
 
     apt-get -y install gfortran libxml++2.6-dev

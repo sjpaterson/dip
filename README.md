@@ -26,6 +26,12 @@ The build information is in the container directory, however it utilises the MWA
 
  If using Pawsey and AVSO observations stored in /scratch/mwasci/asvo: "createReport.py" can been run, DIP will then automatically create the symlinks for each batch of observations. You can control the number of observations to process at a time by editing dip.sbatch. The default is 120 which is reflected in the line "manageReport.py create 120", the value 120 can be changed to the number of desired observations to be processed per run.
 
+ For AVSO, you will need to set your MWA_ASVO_API_KEY environment variable.
+ https://mwatelescope.atlassian.net/wiki/spaces/MP/pages/24972779/MWA+ASVO+Command+Line+Clients#Finding-your-API-key
+
+ To monitor the Nextflow run, you will need to set your TOWER_ACCESS_TOKEN environment variable.
+ https://metagenomics-pipelines.readthedocs.io/en/latest/nf_tower.html
+ 
  If not run on Pawsey or not using ASVO: Create symlinks to the observations you wish to process in your observations directory. It will process all symlinks in the directory so it is recommended to do it in batches suitable for your system.
 
  Step One: Run download.sh

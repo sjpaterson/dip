@@ -8,13 +8,13 @@
 #SBATCH --mem-per-cpu=8GB
 
 
-CONTAINER=/software/projects/mwasci/user/containers/dip.sif
+CONTAINER=/software/projects/$PAWSEY_PROJECT/$USER/containers/dip.sif
 
 RUNNAME=$(date +%Y-%m-%d_%H-%M)
 
 # Java for the user based Nextflow installation, and singulairty to run the reporting scripts.
 module load nextflow/23.10.0
-module load singularity/3.11.4-slurm
+module load singularity/4.1.0-slurm
 
 # Optimize Nextflow for running in a slurm process.
 export NXF_OPTS="-Xms500M -Xmx2G"
