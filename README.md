@@ -3,6 +3,7 @@
 
  The Deep Imaging Pipeline (DIP) is adapted from the GLEAM-X pipeline (https://github.com/tjgalvin/GLEAM-X-pipeline).
  DIP is designed and optimized to process a large quantity of observations with minimal user input and then mosaic them to generate a deep field image.
+ Default configuration is for DIP to be run on Pawsey Setonix and utilises AVSO to download oberservations.
  
  Configuration: Please edit "nextflow.config" to update user directories. The observations directory can be edited directly in the config or passed to the nextflow script with the paramater --obsdir.
  
@@ -23,8 +24,6 @@ The build information is in the container directory, however it utilises the MWA
  
  Update nextflow.config to reflect your user directories, the directory that will contain the symlinks to your mesasurement sets and any additional options.
  Update dip.sbatch with your accountname and the location of the DIP singularity container (recommended storage location of the container is /software/projects/[project]/[username]/containers).
-
- If using Pawsey and AVSO observations stored in /scratch/mwasci/asvo: "createReport.py" can been run, DIP will then automatically create the symlinks for each batch of observations. You can control the number of observations to process at a time by editing dip.sbatch. The default is 120 which is reflected in the line "manageReport.py create 120", the value 120 can be changed to the number of desired observations to be processed per run.
 
  For AVSO, you will need to set your MWA_ASVO_API_KEY environment variable.
  https://mwatelescope.atlassian.net/wiki/spaces/MP/pages/24972779/MWA+ASVO+Command+Line+Clients#Finding-your-API-key

@@ -2,10 +2,11 @@
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --account=accountname
 #SBATCH --partition=work
 #SBATCH --time=24:00:00
 #SBATCH --mem-per-cpu=8GB
+
+export SBATCH_ACCOUNT="accountname"
 
 
 CONTAINER=/software/projects/$PAWSEY_PROJECT/$USER/containers/dip.sif

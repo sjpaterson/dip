@@ -35,8 +35,8 @@ process calibrate {
 process image {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
-  // Set SLURM job time limit to 360 minutes, increase it each time it times out for a maximum of 2 retries.
-  time { 360.minutes * task.attempt }
+  // Set SLURM job time limit to 6 hours, if it fails retry at 12 and then 18 hours.
+  time { 6.hour * task.attempt }
   errorStrategy 'retry'
   maxRetries 2
   memory '110G'
@@ -56,7 +56,7 @@ process image {
 process postImage {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
-  time 3.hour
+  time 6.hour
   memory '176G'
 
   input:

@@ -35,10 +35,12 @@ with open(configFile) as f:
             reportCsv = line.split('=',1)[1].strip()
             reportCsv = reportCsv.replace('"', '')
             reportCsv = reportCsv.replace("'", "")
+            reportCsv = os.path.expandvars(reportCsv)
         if 'obsdir=' in line.replace(' ', ''):
             obsDir = line.split('=',1)[1].strip()
             obsDir = obsDir.replace('"', '')
             obsDir = obsDir.replace("'", "")
+            obsDir = os.path.expandvars(obsDir)
 
 if reportCsv == '' or obsDir == '':
     print('Error: Unable to find the data entries in the nextflow.config.')
