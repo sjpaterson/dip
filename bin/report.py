@@ -6,6 +6,7 @@ import pandas as pd
 
 def updateObs(reportFile, obsid, action, val, quiet=False):
     obsid = str(obsid)
+    obsid = obsid[0:10]
 
     # Create a lock file in the same directory as the report.
     lockFile = os.path.join(os.path.dirname(reportFile), '.lock')
@@ -20,8 +21,11 @@ def updateObs(reportFile, obsid, action, val, quiet=False):
                 # Set the file lock.
                 fcntl.flock(filelock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 # Open and update the report.
-                report = pd.read_csv(reportFile, dtype=str, index_col='obsid')
-                report.index = report.index.map(str)
+                report = pd.read_csv(reportFile, dtype=str)
+                #report.index = report.index.map(str)
+                report['obsid'] = report['obsid'].apply(str)
+                report['obsid'] = report['obsid'].str.slice(0,10)
+                report.set_index('obsid', inplace=True)
 
                 # Check to ensure the column exists, if not, create it.
                 if action not in report.columns:
@@ -41,6 +45,7 @@ def updateObs(reportFile, obsid, action, val, quiet=False):
 
 def startObs(reportFile, obsid, obsDir):
     obsid = str(obsid)
+    obsid = obsid[0:10]
 
     # Create a lock file in the same directory as the report.
     lockFile = os.path.join(os.path.dirname(reportFile), '.lock')
@@ -54,8 +59,12 @@ def startObs(reportFile, obsid, obsDir):
                 # Set the file lock.
                 fcntl.flock(filelock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 # Open and update the report.
-                report = pd.read_csv(reportFile, dtype=str, index_col='obsid')
-                report.index = report.index.map(str)
+                report = pd.read_csv(reportFile, dtype=str)
+                #report.index = report.index.map(str)
+                report['obsid'] = report['obsid'].apply(str)
+                report['obsid'] = report['obsid'].str.slice(0,10)
+                report.set_index('obsid', inplace=True)
+                
                 report.loc[obsid, 'status'] = 'Queued'
                 report.loc[obsid, 'generateCalibration'] = 'Queued'
                 report.loc[obsid, 'applyCalibration'] = 'Queued'
