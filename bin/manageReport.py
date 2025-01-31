@@ -81,6 +81,11 @@ if action == 'create':
     # Otherwise check the report and verify.
     reportDF = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
+    if 'status' not in reportDF.columns:
+        reportDF['status'] = ''
+    if 'attempts' not in reportDF.columns:
+        reportDF['attempts'] = 0
+
     # Filter the reportDF to remove any bad observations.
     reportDF.dropna(subset=['jobid'], inplace=True)
     reportDF = reportDF[reportDF['status'] != 'Success']
@@ -134,6 +139,26 @@ if action == 'verify' or action == 'status':
     print('Loading ' + reportCsv)
     reportDF = pd.read_csv(reportCsv, dtype=str)
     reportDF.set_index('obsid', inplace=True)
+
+    if 'status' not in reportDF.columns:
+        reportDF['status'] = ''
+    if 'calibration' not in reportDF.columns:
+        reportDF['calibration'] = ''
+    if 'image' not in reportDF.columns:
+        reportDF['image'] = ''
+    if 'postImage_0000' not in reportDF.columns:
+        reportDF['postImage_0000'] = ''
+    if 'postImage_0001' not in reportDF.columns:
+        reportDF['postImage_0001'] = ''
+    if 'jobid' not in reportDF.columns:
+        reportDF['jobid'] = ''
+    if 'postImage_0002' not in reportDF.columns:
+        reportDF['postImage_0002'] = ''
+    if 'postImage_0003' not in reportDF.columns:
+        reportDF['postImage_0003'] = ''
+    if 'postImage_MFS' not in reportDF.columns:
+        reportDF['postImage_MFS'] = ''
+
 
     quietMode = False
     if action == 'status':
@@ -203,6 +228,9 @@ if action == 'status':
     reportDF = pd.read_csv(reportCsv, dtype=str)
     reportDF.set_index('obsid', inplace=True)
 
+    if 'status' not in reportDF.columns:
+        reportDF['status'] = ''
+
     # Count of: Total observations, jobs needing to be downloaded, submitted/queued/processing jobs, completed jobs, obs processed, obs queued/running, obs failed, obs successful.
     totalObs = len(reportDF.index)
 
@@ -210,7 +238,7 @@ if action == 'status':
     jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != 'Downloaded') & (reportDF['job_status'] != 'Missing Data')].index)
     jobsErrors = len(reportDF[reportDF['job_status'] == 'Missing Data'].index)
     jobsDownloaded = len(reportDF[reportDF['job_status'] == 'Downloaded'].index)
-    obsProcessed = len(reportDF[pd.notnull(reportDF['status'])].index)
+    obsProcessed = len(reportDF[pd.notnull(reportDF['status']) | reportDF['status'] == ''].index)
 
     obsQueued = len(reportDF[reportDF['status'] == 'Queued'].index)
     obsFailed = len(reportDF[reportDF['status'] == 'Failed'].index)
@@ -252,8 +280,14 @@ if action == 'download':
     reportDF = pd.read_csv(reportCsv, dtype=str)
     reportDF.set_index('obsid', inplace=True)
 
+    # Check to ensure columns required exist, if not, create them.
+    if 'jobid' not in reportDF.columns:
+        reportDF['jobid'] = ''
+    if 'job_status' not in reportDF.columns:
+        reportDF['job_status'] = ''
+
     # Check how many observations are currently being downloaded.
-    jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != 'Downloaded') & (reportDF['job_status'] != 'Missing Data')].index)
+    jobsSubmitted = len(reportDF[pd.notnull(reportDF['job_status']) & (reportDF['job_status'] != '') & (reportDF['job_status'] != 'Downloaded') & (reportDF['job_status'] != 'Missing Data')].index)
     maxObs = numberObs
     numberObs = numberObs - jobsSubmitted
 
@@ -263,9 +297,9 @@ if action == 'download':
         exit()
 
     # Filter for only obs left to download.
-    reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == 'Missing Data')]
+    reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == '') | (reportDF['job_status'] == 'Missing Data')]
     print(f'Total observations left to download: {len(reportDF.index)}')
-    print(f'Queueing a total of {numberObs} observations.')
+    print(f'Queueing a maximum of {numberObs} observations.')
 
     params = dict()
     params['avg_time_res'] = '4'

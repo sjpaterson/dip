@@ -24,6 +24,7 @@ The build information is in the container directory, however it utilises the MWA
  
  Update nextflow.config to reflect your user directories, the directory that will contain the symlinks to your mesasurement sets and any additional options.
  Update dip.sbatch with your accountname and the location of the DIP singularity container (recommended storage location of the container is /software/projects/[project]/[username]/containers).
+ Currently the beaminfo is not hosted online, please contact myself to obtain a copy of this to include in the beaminfo directory.
 
  For AVSO, you will need to set your MWA_ASVO_API_KEY environment variable.
  https://mwatelescope.atlassian.net/wiki/spaces/MP/pages/24972779/MWA+ASVO+Command+Line+Clients#Finding-your-API-key
@@ -34,11 +35,13 @@ The build information is in the container directory, however it utilises the MWA
  If not run on Pawsey or not using ASVO: Create symlinks to the observations you wish to process in your observations directory. It will process all symlinks in the directory so it is recommended to do it in batches suitable for your system.
 
  Step One: Run download.sh
- This is step uses minimum resources so can be run on the login node. A number of observations to request from the AVSO can be specified as an input, default is 120.
+ This step uses minimum resources so can be run on the login node. A number of observations to request from the AVSO can be specified as an input, default is 120.
  
  Step Two: Run dip.sbatch
  This will need the be rerun until all observations have been processed.
  On success, DIP will replace the symlink with a folder containing the processed observation.
+
+ To check the download status and provide the number of observations successfully downloaded and available to process, status.sh can be run.
 
  Once all observations have been completed, they can be mosaicked together with dip_mosaic available from [Future GitHub link].
  

@@ -29,7 +29,7 @@ def updateObs(reportFile, obsid, action, val, quiet=False):
 
                 # Check to ensure the column exists, if not, create it.
                 if action not in report.columns:
-                    report['action'] = ''
+                    report[action] = ''
                     
                 report.loc[obsid, action] = val
                 report.to_csv(reportFile)
@@ -61,38 +61,75 @@ def startObs(reportFile, obsid, obsDir):
                 # Open and update the report.
                 report = pd.read_csv(reportFile, dtype=str)
                 #report.index = report.index.map(str)
+                print('Successfully Opened and Read Report.')
                 report['obsid'] = report['obsid'].apply(str)
                 report['obsid'] = report['obsid'].str.slice(0,10)
                 report.set_index('obsid', inplace=True)
+
+                if 'attempts' not in report.columns:
+                    report['attempts'] = 0
+                if 'obsDir' not in report.columns:
+                    report['obsDir'] = ''
+                if 'status' not in report.columns:
+                    report['status'] = ''
                 
+                # Quick ugly implementation to get the run going, to revisit and redo with a much nicer method.
                 report.loc[obsid, 'status'] = 'Queued'
-                report.loc[obsid, 'generateCalibration'] = 'Queued'
-                report.loc[obsid, 'applyCalibration'] = 'Queued'
-                report.loc[obsid, 'flagUV'] = 'Queued'
-                report.loc[obsid, 'uvSub'] = 'Queued'
-                report.loc[obsid, 'image'] = 'Queued'
-                report.loc[obsid, 'postImage_0000'] = 'Queued'
-                report.loc[obsid, 'postImage_0001'] = 'Queued'
-                report.loc[obsid, 'postImage_0002'] = 'Queued'
-                report.loc[obsid, 'postImage_0003'] = 'Queued'
-                report.loc[obsid, 'postImage_MFS'] = 'Queued'
-                report.loc[obsid, 'beamsize'] = ''
-                report.loc[obsid, 'uvSub_SourceCount'] = ''
-                report.loc[obsid, 'sourcecount_0000'] = ''
-                report.loc[obsid, 'sourcecount_0001'] = ''
-                report.loc[obsid, 'sourcecount_0002'] = ''
-                report.loc[obsid, 'sourcecount_0003'] = ''
-                report.loc[obsid, 'sourcecount_MFS'] = ''
-                report.loc[obsid, 'coord_rms_0000'] = ''
-                report.loc[obsid, 'coord_rms_0001'] = ''
-                report.loc[obsid, 'coord_rms_0002'] = ''
-                report.loc[obsid, 'coord_rms_0003'] = ''
-                report.loc[obsid, 'coord_rms_MFS'] = ''
-                report.loc[obsid, 'rms_0000'] = ''
-                report.loc[obsid, 'rms_0001'] = ''
-                report.loc[obsid, 'rms_0002'] = ''
-                report.loc[obsid, 'rms_0003'] = ''
-                report.loc[obsid, 'rms_MFS'] = ''
+                if 'generateCalibration' in report.columns:
+                    report.loc[obsid, 'generateCalibration'] = 'Queued'
+                if 'applyCalibration' in report.columns:
+                    report.loc[obsid, 'applyCalibration'] = 'Queued'
+                if 'flagUV' in report.columns:
+                    report.loc[obsid, 'flagUV'] = 'Queued'
+                if 'uvSub' in report.columns:
+                    report.loc[obsid, 'uvSub'] = 'Queued'
+                if 'image' in report.columns:
+                    report.loc[obsid, 'image'] = 'Queued'
+                if 'postImage_0000' in report.columns:
+                    report.loc[obsid, 'postImage_0000'] = 'Queued'
+                if 'postImage_0001' in report.columns:
+                    report.loc[obsid, 'postImage_0001'] = 'Queued'
+                if 'postImage_0002' in report.columns:
+                    report.loc[obsid, 'postImage_0002'] = 'Queued'
+                if 'postImage_0003' in report.columns:
+                    report.loc[obsid, 'postImage_0003'] = 'Queued'
+                if 'postImage_MFS' in report.columns:
+                    report.loc[obsid, 'postImage_MFS'] = 'Queued'
+                if 'beamsize' in report.columns:
+                    report.loc[obsid, 'beamsize'] = ''
+                if 'uvSub_SourceCount' in report.columns:
+                    report.loc[obsid, 'uvSub_SourceCount'] = ''
+                if 'sourcecount_0000' in report.columns:
+                    report.loc[obsid, 'sourcecount_0000'] = ''
+                if 'sourcecount_0001' in report.columns:
+                    report.loc[obsid, 'sourcecount_0001'] = ''
+                if 'sourcecount_0002' in report.columns:
+                    report.loc[obsid, 'sourcecount_0002'] = ''
+                if 'sourcecount_0003' in report.columns:
+                    report.loc[obsid, 'sourcecount_0003'] = ''
+                if 'sourcecount_MFS' in report.columns:
+                    report.loc[obsid, 'sourcecount_MFS'] = ''
+                if 'coord_rms_0000' in report.columns:
+                    report.loc[obsid, 'coord_rms_0000'] = ''
+                if 'coord_rms_0001' in report.columns:
+                    report.loc[obsid, 'coord_rms_0001'] = ''
+                if 'coord_rms_0002' in report.columns:
+                    report.loc[obsid, 'coord_rms_0002'] = ''
+                if 'coord_rms_0003' in report.columns:
+                    report.loc[obsid, 'coord_rms_0003'] = ''
+                if 'coord_rms_MFS' in report.columns:
+                    report.loc[obsid, 'coord_rms_MFS'] = ''
+                if 'rms_0000' in report.columns:
+                    report.loc[obsid, 'rms_0000'] = ''
+                if 'rms_0001' in report.columns:
+                    report.loc[obsid, 'rms_0001'] = ''
+                if 'rms_0002' in report.columns:
+                    report.loc[obsid, 'rms_0002'] = ''
+                if 'rms_0003' in report.columns:
+                    report.loc[obsid, 'rms_0003'] = ''
+                if 'rms_MFS' in report.columns:
+                    report.loc[obsid, 'rms_MFS'] = ''
+                
                 report.loc[obsid, 'obsDir'] = obsDir
 
                 if pd.isna(report.loc[obsid, 'attempts']) or report.loc[obsid, 'attempts'] == '':
