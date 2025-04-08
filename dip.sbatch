@@ -9,7 +9,7 @@
 export SBATCH_ACCOUNT="accountname"
 
 
-CONTAINER=/software/projects/$PAWSEY_PROJECT/$USER/containers/dip.sif
+CONTAINER=/software/projects/$PAWSEY_PROJECT/$USER/containers/mantaray.sif
 
 RUNNAME=$(date +%Y-%m-%d_%H-%M)
 

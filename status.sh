@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-CONTAINER=/software/projects/$PAWSEY_PROJECT/$USER/containers/dip.sif
+CONTAINER=/software/projects/$PAWSEY_PROJECT/$USER/containers/mantaray.sif
 
 module load singularity/4.1.0-slurm
 
