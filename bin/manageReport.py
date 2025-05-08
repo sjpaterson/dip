@@ -177,11 +177,10 @@ if action == 'verify' or action == 'status':
             jobState = job['row']['job_state']
             if obsID in reportDF.index:
                 report.updateObs(reportCsv, obsID, 'jobid', jobID, quiet=quietMode)
-                if jobState == 0:
-                    report.updateObs(reportCsv, obsID, 'job_status', 'Queued', quiet=quietMode)
-                if jobState == 1:
-                    report.updateObs(reportCsv, obsID, 'job_status', 'Processing', quiet=quietMode)
-                if jobState == 2:
+
+                if jobState != 'completed':
+                    report.updateObs(reportCsv, obsID, 'job_status', f'{jobState}', quiet=quietMode)
+                if jobState == 'completed':
                     # Ensure the mesaurement set data is there and complete and mark as downloaded if it is.
                     if reportDF.at[obsID, 'job_status'] != 'Downloaded':
                         if verifyDownload(obsID, jobID, quietMode) == True:
