@@ -22,7 +22,7 @@ reportCsv = sys.argv[5]
 metafits = obsid + '.metafits'
 measurementSet = obsid + '.ms'
 
-msigma=3                            # S/N Level at which to choose masked pixels for deepclean
+msigma=10                            # S/N Level at which to choose masked pixels for deepclean
 autoThreshold = 1                   # S/N Threshold at which to stop cleaning
 min_uv = 0
 nmitter = 10

@@ -6,6 +6,8 @@ nextflow.enable.dsl=2
 // Perform a secondary check to ensure the directory is a synbolic link (observation has not been processed).
 // If it isn't, then it has been processed and therefore exit with error.
 process startObsProcessing {
+  stageInMode = "symlink"
+
   input:
     path obsid
   output:
@@ -36,10 +38,10 @@ process image {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
   // Set SLURM job time limit to 6 hours, if it fails retry at 12 and then 18 hours.
-  time { 6.hour * task.attempt }
+  time { 3.hour * task.attempt }
   errorStrategy 'retry'
   maxRetries 2
-  memory '110G'
+  memory '80G'
 
   input:
     path obsid
@@ -49,6 +51,7 @@ process image {
     """
     cd $obsid
     image.py $projectDir $obsid $params.briggs $params.tukey $params.reportCsv
+    rm *.ms -rf
     """
 }
 
@@ -56,8 +59,8 @@ process image {
 process postImage {
   publishDir params.obsdir, mode: 'copy', overwrite: true
 
-  time 6.hour
-  memory '176G'
+  time 3.hour
+  memory '86G'
 
   input:
     path obsid
