@@ -6,14 +6,38 @@ from astropy.stats import sigma_clip, mad_std
 
 
 # Calculate the thermal noise for the image.
-def calcRMS(obsFile):
-    obsFits = fits.open(obsFile)
-    obsWCS = WCS(obsFits[0].header).celestial
-    obsImage = obsFits[0].data
-    obsImageShape = obsImage.shape
-    obsFits.close()
+# def calcRMS(obsFile):
+#     obsFits = fits.open(obsFile)
+#     obsWCS = WCS(obsFits[0].header).celestial
+#     obsImage = obsFits[0].data
+#     obsImageShape = obsImage.shape
+#     obsFits.close()
 
-    return obsImage[int(obsImageShape[1]/2), int(obsImageShape[0]/2)]
+#     return obsImage[int(obsImageShape[1]/2), int(obsImageShape[0]/2)]
+
+# Updated - Calculate the thermal noise for the image, the inner 10% of the image at the beam centre.
+def calcRMS(rmsFile, beamFile):
+    rmsFits = fits.open(rmsFile)
+    rmsImage = rmsFits[0].data
+    rmsShape = rmsImage.shape
+
+    beamFits = fits.open(beamFile)
+    beamImage = beamFits[0].data[0,0,:,:]
+    beamShape = beamImage.shape
+
+    delta = np.ceil(np.array(rmsShape) * 0.05).astype(int)
+    scale = [rmsShape[0]/beamShape[0], rmsShape[1]/beamShape[1]]
+
+    centreBeam = np.unravel_index(np.argmax(beamImage), beamShape)
+    centPosition = [int(np.round(centreBeam[0] * scale[0])), int(np.round(centreBeam[1] * scale[1]))]
+    cen_rms = rmsImage[centPosition[0] - delta[0] : centPosition[0] + delta[0], centPosition[1] - delta[1] : centPosition[1] + delta[1]]
+    mean_rms = np.nanmean(cen_rms)
+
+    rmsFits.close()
+    beamFits.close()
+
+    return mean_rms
+
 
 # Calculate the RMS at the cooreds specified by ra and dec in degrees.
 def calcRMSCoords(obsFile, ra, dec):

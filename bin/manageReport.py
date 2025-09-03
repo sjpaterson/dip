@@ -140,24 +140,24 @@ if action == 'verify' or action == 'status':
     reportDF = pd.read_csv(reportCsv, dtype=str)
     reportDF.set_index('obsid', inplace=True)
 
-    if 'status' not in reportDF.columns:
-        reportDF['status'] = ''
-    if 'calibration' not in reportDF.columns:
-        reportDF['calibration'] = ''
-    if 'image' not in reportDF.columns:
-        reportDF['image'] = ''
-    if 'postImage_0000' not in reportDF.columns:
-        reportDF['postImage_0000'] = ''
-    if 'postImage_0001' not in reportDF.columns:
-        reportDF['postImage_0001'] = ''
-    if 'jobid' not in reportDF.columns:
-        reportDF['jobid'] = ''
-    if 'postImage_0002' not in reportDF.columns:
-        reportDF['postImage_0002'] = ''
-    if 'postImage_0003' not in reportDF.columns:
-        reportDF['postImage_0003'] = ''
-    if 'postImage_MFS' not in reportDF.columns:
-        reportDF['postImage_MFS'] = ''
+    # if 'status' not in reportDF.columns:
+    #     reportDF['status'] = ''
+    # if 'calibration' not in reportDF.columns:
+    #     reportDF['calibration'] = ''
+    # if 'image' not in reportDF.columns:
+    #     reportDF['image'] = ''
+    # if 'postImage_0000' not in reportDF.columns:
+    #     reportDF['postImage_0000'] = ''
+    # if 'postImage_0001' not in reportDF.columns:
+    #     reportDF['postImage_0001'] = ''
+    # if 'jobid' not in reportDF.columns:
+    #     reportDF['jobid'] = ''
+    # if 'postImage_0002' not in reportDF.columns:
+    #     reportDF['postImage_0002'] = ''
+    # if 'postImage_0003' not in reportDF.columns:
+    #     reportDF['postImage_0003'] = ''
+    # if 'postImage_MFS' not in reportDF.columns:
+    #     reportDF['postImage_MFS'] = ''
 
 
     quietMode = False
@@ -190,14 +190,23 @@ if action == 'verify' or action == 'status':
     
 
     # Filter the reportDF to remove any bad observations.
-    reportDF = reportDF[reportDF['calibration'] == 'Success']
-    reportDF = reportDF[reportDF['image'] == 'Success']
-    reportDF = reportDF[reportDF['postImage_0000'] == 'Success']
-    reportDF = reportDF[reportDF['postImage_0001'] == 'Success']
-    reportDF = reportDF[reportDF['postImage_0002'] == 'Success']
-    reportDF = reportDF[reportDF['postImage_0003'] == 'Success']
-    reportDF = reportDF[reportDF['postImage_MFS'] == 'Success']
-    reportDF = reportDF[reportDF['status'] != 'Success']
+    if 'calibration' in reportDF.columns:
+        reportDF = reportDF[reportDF['calibration'] == 'Success']
+    if 'image' in reportDF.columns:
+        reportDF = reportDF[reportDF['image'] == 'Success']
+    if 'postImage_0000' in reportDF.columns:
+        reportDF = reportDF[reportDF['postImage_0000'] == 'Success']
+    if 'postImage_0001' in reportDF.columns:
+        reportDF = reportDF[reportDF['postImage_0001'] == 'Success']
+    if 'postImage_0002' in reportDF.columns:
+        reportDF = reportDF[reportDF['postImage_0002'] == 'Success']
+    if 'postImage_0003' in reportDF.columns:
+        reportDF = reportDF[reportDF['postImage_0003'] == 'Success']
+    if 'postImage_MFS' in reportDF.columns:
+        reportDF = reportDF[reportDF['postImage_MFS'] == 'Success']
+    if 'status' in reportDF.columns:
+        reportDF = reportDF[reportDF['status'] != 'Success']
+
 
     if not quietMode:
         print('Validating ' + str(len(reportDF.index)) + ' observations.')
@@ -207,8 +216,15 @@ if action == 'verify' or action == 'status':
         missing = False
 
         # Check to ensure the files for the subchans have been published as reported.
-        for subchan in ['0000', '0001', '0002', '0003', 'MFS']:
-            file = row['obsDir'] + '/' + str(obsid) + '/' + str(obsid) + '_deep-' + subchan + '-image-pb_warp.fits'
+        #for subchan in ['0000', '0001', '0002', '0003', 'MFS']:for subchan in ['0000', '0001', '0002', '0003', 'MFS']:
+        for subchan in ['MFS']:
+            reportObsDir = row['obsDir']
+            # If the observation directory entry is missing, try the oneb in the nextflow.config.
+            if pd.isna(reportObsDir):
+                reportObsDir = obsDir
+                report.updateObs(reportCsv, obsid, 'obsDir', obsDir, quiet=quietMode)
+
+            file = f'{reportObsDir}/{obsid}/{obsid}_deep-{subchan}-image-pb_warp_scaled.fits'
             if not os.path.exists(file):
                 missing = True
                 break

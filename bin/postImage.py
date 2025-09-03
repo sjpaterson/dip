@@ -133,8 +133,10 @@ with fits.open(obsFiles['yy']) as obsHdu:
 # Calculate the RMS for each pn corrected polarization.
 subprocess.run(f'BANE --cores 1 --compress "{obsFiles["xx_pb"]}"', shell=True, check=True)
 subprocess.run(f'BANE --cores 1 --compress "{obsFiles["yy_pb"]}"', shell=True, check=True)
-rmsXX = rms.calcRMSCoords(obsFiles['xx_pb_rms'], beamCentXX.ra.deg, beamCentXX.dec.deg)
-rmsYY = rms.calcRMSCoords(obsFiles['yy_pb_rms'], beamCentYY.ra.deg, beamCentYY.dec.deg)
+#rmsXX = rms.calcRMSCoords(obsFiles['xx_pb_rms'], beamCentXX.ra.deg, beamCentXX.dec.deg)
+#rmsYY = rms.calcRMSCoords(obsFiles['yy_pb_rms'], beamCentYY.ra.deg, beamCentYY.dec.deg)
+rmsXX = rms.calcRMS(obsFiles['xx_pb_rms'], obsFiles['beam_xx'])
+rmsYY = rms.calcRMS(obsFiles['yy_pb_rms'], obsFiles['beam_yy'])
 report.updateObs(reportCsv, obsid, 'rms_xx_' + subchan, rmsXX)
 report.updateObs(reportCsv, obsid, 'rms_yy_' + subchan, rmsYY)
 
