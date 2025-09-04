@@ -190,8 +190,10 @@ if action == 'verify' or action == 'status':
     
 
     # Filter the reportDF to remove any bad observations.
+    processingStarted = False
     if 'calibration' in reportDF.columns:
         reportDF = reportDF[reportDF['calibration'] == 'Success']
+        processingStarted = True
     if 'image' in reportDF.columns:
         reportDF = reportDF[reportDF['image'] == 'Success']
     if 'postImage_0000' in reportDF.columns:
@@ -211,32 +213,34 @@ if action == 'verify' or action == 'status':
     if not quietMode:
         print('Validating ' + str(len(reportDF.index)) + ' observations.')
 
-    count = 0
-    for obsid, row in reportDF.iterrows():
-        missing = False
 
-        # Check to ensure the files for the subchans have been published as reported.
-        #for subchan in ['0000', '0001', '0002', '0003', 'MFS']:for subchan in ['0000', '0001', '0002', '0003', 'MFS']:
-        for subchan in ['MFS']:
-            reportObsDir = row['obsDir']
-            # If the observation directory entry is missing, try the oneb in the nextflow.config.
-            if pd.isna(reportObsDir):
-                reportObsDir = obsDir
-                report.updateObs(reportCsv, obsid, 'obsDir', obsDir, quiet=quietMode)
+    if processingStarted:
+        count = 0
+        for obsid, row in reportDF.iterrows():
+            missing = False
 
-            file = f'{reportObsDir}/{obsid}/{obsid}_deep-{subchan}-image-pb_warp_scaled.fits'
-            if not os.path.exists(file):
-                missing = True
-                break
-        
-        # If any subchan for obsid missing, Clear the report entry (updating error count), delete the folder, recreate symlink if erorr count < 3.
-        if missing == False:
-            report.updateObs(reportCsv, obsid, 'status', 'Success', quiet=quietMode)
-        else:
-            report.updateObs(reportCsv, obsid, 'status', 'Missing Data', quiet=quietMode)
+            # Check to ensure the files for the subchans have been published as reported.
+            #for subchan in ['0000', '0001', '0002', '0003', 'MFS']:for subchan in ['0000', '0001', '0002', '0003', 'MFS']:
+            for subchan in ['MFS']:
+                reportObsDir = row['obsDir']
+                # If the observation directory entry is missing, try the oneb in the nextflow.config.
+                if pd.isna(reportObsDir):
+                    reportObsDir = obsDir
+                    report.updateObs(reportCsv, obsid, 'obsDir', obsDir, quiet=quietMode)
 
-    if not quietMode:
-        print('Found ' + str(count) + ' errors.')
+                file = f'{reportObsDir}/{obsid}/{obsid}_deep-{subchan}-image-pb_warp_scaled.fits'
+                if not os.path.exists(file):
+                    missing = True
+                    break
+            
+            # If any subchan for obsid missing, Clear the report entry (updating error count), delete the folder, recreate symlink if erorr count < 3.
+            if missing == False:
+                report.updateObs(reportCsv, obsid, 'status', 'Success', quiet=quietMode)
+            else:
+                report.updateObs(reportCsv, obsid, 'status', 'Missing Data', quiet=quietMode)
+
+        if not quietMode:
+            print('Found ' + str(count) + ' errors.')
 
 
 if action == 'status':
