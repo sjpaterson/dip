@@ -316,7 +316,7 @@ if action == 'download':
         exit()
 
     # Filter for only obs left to download.
-    reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == '') | (reportDF['job_status'] == 'Missing Data')]
+    reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == '') | (reportDF['job_status'] == 'Missing Data') | (reportDF['job_status'] == 'cancelled') | (reportDF['job_status'] == 'error')]
     print(f'Total observations left to download: {len(reportDF.index)}')
     print(f'Queueing a maximum of {numberObs} observations.')
 
@@ -330,8 +330,8 @@ if action == 'download':
     count = 0
     for obsID, row in reportDF.iterrows():
         # Check if a job already exists for the Obs ID, if so skip it.
-        if obsID in obsIDList:
-            continue
+        # if obsID in obsIDList:
+        #     continue
 
         params['obs_id'] = obsID
         # Submit job.
