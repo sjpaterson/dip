@@ -97,8 +97,10 @@ if action == 'create':
     # Create a maximum of 120 symlinks but still run through the entire operation to ensure old symlinks,
     # such as those that have reached their attempt limit, are removed.
     count = 0
-    for obsid, row in reportDF.iterrows():
-        asvoObsPath = os.path.join(asvoPath, reportDF.at[obsid, 'jobid'])
+    for index, row in reportDF.iterrows():
+        obsid = str(index)
+        obsid = obsid[0:10]
+        asvoObsPath = os.path.join(asvoPath, reportDF.at[index, 'jobid'])
         msPath = os.path.join(asvoObsPath, str(obsid) + '.ms')
         obsPath = os.path.join(obsDir, str(obsid))
 
@@ -110,7 +112,7 @@ if action == 'create':
                 os.unlink(obsPath)
 
         # If the measurement set data is not there or incomplete, skip.
-        if verifyDownload(obsid, reportDF.at[obsid, 'jobid']) == False:
+        if verifyDownload(obsid, reportDF.at[index, 'jobid']) == False:
             continue
 
         # If it is a failed observation, skip.
@@ -122,12 +124,12 @@ if action == 'create':
         # IF attempt field is empty, treat it as 0.
         reportDF['attempts'] = reportDF['attempts'].fillna(0)
         # If < 3 attempts, create the new symlink.
-        if int(reportDF.at[obsid, 'attempts']) < 3 and count < numberObs:
+        if int(reportDF.at[index, 'attempts']) < 3 and count < numberObs:
             os.symlink(asvoObsPath, obsPath)
             report.updateObs(reportCsv, obsid, 'status', 'Initiated')
             count = count + 1
 
-        if int(reportDF.at[obsid, 'attempts']) >= 3:
+        if int(reportDF.at[index, 'attempts']) >= 3:
             report.updateObs(reportCsv, obsid, 'status', 'Failed')
 
     print('Created ' + str(count) + ' symlinks.')
@@ -319,6 +321,8 @@ if action == 'download':
     reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == '') | (reportDF['job_status'] == 'Missing Data') | (reportDF['job_status'] == 'cancelled') | (reportDF['job_status'] == 'error')]
     print(f'Total observations left to download: {len(reportDF.index)}')
     print(f'Queueing a maximum of {numberObs} observations.')
+    print(reportDF)
+    exit()
 
     params = dict()
     params['avg_time_res'] = '4'
@@ -343,7 +347,7 @@ if action == 'download':
             print(f'Submitted {obsID} with Job ID {jobID}.')
             count = count + 1
         except:
-            print(f'Failled to submit {obsID}.')
+            print(f'Failed to submit {obsID}.')
 
         # If the maximum number of jobs have been reached, break.
         if count >= numberObs:
