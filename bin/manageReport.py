@@ -97,11 +97,9 @@ if action == 'create':
     # Create a maximum of 120 symlinks but still run through the entire operation to ensure old symlinks,
     # such as those that have reached their attempt limit, are removed.
     count = 0
-    for index, row in reportDF.iterrows():
-        obsid = str(index)
-        obsid = obsid[0:10]
-        asvoObsPath = os.path.join(asvoPath, reportDF.at[index, 'jobid'])
-        msPath = os.path.join(asvoObsPath, str(obsid) + '.ms')
+    for obsid, row in reportDF.iterrows():
+        asvoObsPath = os.path.join(asvoPath, reportDF.at[obsid, 'jobid'])
+        msPath = os.path.join(asvoObsPath, f'{obsid}.ms')
         obsPath = os.path.join(obsDir, str(obsid))
 
         # Is the folder or symlink already exists, delete and recreate.
@@ -112,7 +110,7 @@ if action == 'create':
                 os.unlink(obsPath)
 
         # If the measurement set data is not there or incomplete, skip.
-        if verifyDownload(obsid, reportDF.at[index, 'jobid']) == False:
+        if verifyDownload(obsid, reportDF.at[obsid, 'jobid']) == False:
             continue
 
         # If it is a failed observation, skip.
@@ -124,23 +122,24 @@ if action == 'create':
         # IF attempt field is empty, treat it as 0.
         reportDF['attempts'] = reportDF['attempts'].fillna(0)
         # If < 3 attempts, create the new symlink.
-        if int(reportDF.at[index, 'attempts']) < 3 and count < numberObs:
+        if int(reportDF.at[obsid, 'attempts']) < 3 and count < numberObs:
             os.symlink(asvoObsPath, obsPath)
             report.updateObs(reportCsv, obsid, 'status', 'Initiated')
             count = count + 1
 
-        if int(reportDF.at[index, 'attempts']) >= 3:
+        if int(reportDF.at[obsid, 'attempts']) >= 3:
             report.updateObs(reportCsv, obsid, 'status', 'Failed')
 
-    print('Created ' + str(count) + ' symlinks.')
+    print(f'Created {count} symlinks.')
 
 
 # Verbose output for the verify method.
 # For check status, silently update the spreadsheet.
 if action == 'verify' or action == 'status':
-    print('Loading ' + reportCsv)
-    reportDF = pd.read_csv(reportCsv, dtype=str)
-    reportDF.set_index('obsid', inplace=True)
+    print(f'Loading {reportCsv}')
+    #reportDF = pd.read_csv(reportCsv, dtype=str)
+    #reportDF.set_index('obsid', inplace=True)
+    reportDF = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
     # if 'status' not in reportDF.columns:
     #     reportDF['status'] = ''
@@ -213,7 +212,7 @@ if action == 'verify' or action == 'status':
 
 
     if not quietMode:
-        print('Validating ' + str(len(reportDF.index)) + ' observations.')
+        print(f'Validating {len(reportDF.index)} observations.')
 
 
     if processingStarted:
@@ -246,8 +245,9 @@ if action == 'verify' or action == 'status':
 
 
 if action == 'status':
-    reportDF = pd.read_csv(reportCsv, dtype=str)
-    reportDF.set_index('obsid', inplace=True)
+    #reportDF = pd.read_csv(reportCsv, dtype=str)
+    #reportDF.set_index('obsid', inplace=True)
+    reportDF = pd.read_csv(reportCsv, dtype=str, index_col='obsid')
 
     if 'status' not in reportDF.columns:
         reportDF['status'] = ''
@@ -321,8 +321,8 @@ if action == 'download':
     reportDF = reportDF[pd.isnull(reportDF['jobid']) | (reportDF['job_status'] == '') | (reportDF['job_status'] == 'Missing Data') | (reportDF['job_status'] == 'cancelled') | (reportDF['job_status'] == 'error')]
     print(f'Total observations left to download: {len(reportDF.index)}')
     print(f'Queueing a maximum of {numberObs} observations.')
-    print(reportDF)
-    exit()
+    # print(reportDF)
+    # exit()
 
     params = dict()
     params['avg_time_res'] = '4'
