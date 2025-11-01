@@ -5,18 +5,18 @@ nextflow.enable.dsl=2
 // Update the report to ensure the entry for the obsid is clear.
 // Perform a secondary check to ensure the directory is a synbolic link (observation has not been processed).
 // If it isn't, then it has been processed and therefore exit with error.
-process startObsProcessing {
-  stageInMode = "symlink"
+// process startObsProcessing {
+//   stageInMode = "symlink"
 
-  input:
-    path obsid
-  output:
-    path obsid
+//   input:
+//     path obsid
+//   output:
+//     path obsid
 
-    """
-    obsStartCheckReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
-    """
-}
+//     """
+//     obsStartCheckReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
+//     """
+// }
 
 // Calibrate the obsid flagging bad tiles.
 process calibrate {
@@ -97,8 +97,9 @@ workflow {
 
   
   // Process each observation (symlink) in the specified observation directory.
-  startObsProcessing(obsDirCh)
-  calibrate(startObsProcessing.out)
+  // startObsProcessing(obsDirCh)
+  // calibrate(startObsProcessing.out)
+  calibrate(obsDirCh)
   image(calibrate.out)
   postImage(image.out, subChans)
 }
