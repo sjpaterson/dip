@@ -29,6 +29,7 @@ process calibrate {
     export MWA_PB_BEAM="$projectDir/beamdata/gleam_xx_yy.hdf5"
     export MWA_PB_JONEs="$projectDir/beamdata/gleam_jones.hdf5"
     cd $obsid
+    obsStartCheckReport.py "$params.reportCsv" ${obsid} "$params.obsdir"
     calibrate.py $projectDir $obsid $params.reportCsv
     """
 }
